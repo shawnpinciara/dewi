@@ -25,6 +25,7 @@ const uint16_t mask_note = 0b0000000000001111;
 const uint16_t mask_octave = 0b0000111100000000;
 uint16_t currentNote = 0;
 uint16_t lastNote = 0b0111111111111111;
+uint16_t sendNote;
 uint16_t currentKey = 0;
 uint16_t lastKey = 0;
 uint16_t currentOctave = 0;
@@ -64,23 +65,24 @@ void loop() {
   if (breath > threshold) {
     //lettura valori e manipolazione i bit
     mpr121 = mpr.touched(); //valore letto da sensore (12 bit: 00000000000)
-    currentNote = mpr121 & mask_note; //maschera per leggere solo le note
     currentKey = (mpr121 & mask_key)>>4;
     currentOctave = (mpr121 & mask_octave)>>8; //TODO: attaccare fisicamente i sensori all'arduino
-
+    // currentNote = mpr121 & mask_note; //maschera per leggere solo le note
+    currentNote = ((currentOctave+octave)*12)+(noteArray[mpr121 & mask_note]+noteArray[currentKey]);
+    // sendNote = ((currentOctave+octave)*12)+(noteArray[currentNote]+noteArray[currentKey]);
     //gestione del fiato vera e propria
     if (breathAttack) { //all'inizio della soffiata (va una volta sola)
       breathAttack=false; //cambio lo stato cosi non ci entro piu in questo if
       breathRelease = true; //accendo la possibilià di entrare nell'if di quando interromperò il fiato
-      MIDI.sendNoteOn(((currentOctave+octave)*12)+(noteArray[currentNote]+noteArray[currentKey]), velocity, 1);  // Send a MIDI note 
+      MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
     } else { //durante la soffiata (si ripete continuamente)
       if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza
         //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
-        MIDI.sendNoteOff(((currentOctave+octave)*12)+(noteArray[lastNote]+noteArray[currentKey]),velocity,1);
+        MIDI.sendNoteOff(lastNote,velocity,1);
         //aggiorna valore di nota precedente
         lastNote = currentNote;
         //inizia a suonare la nota premuta
-        MIDI.sendNoteOn(((currentOctave+octave)*12)+(noteArray[currentNote]+noteArray[currentKey]), velocity, 1);  // Send a MIDI note 
+        MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
         Serial.println(currentKey); //log
       } else {
         //TODO: inviare segnale midi per cambio di velocity esssendo che la nota suonata è la stessa ma puo variare l'intensità
@@ -89,11 +91,10 @@ void loop() {
     
   } else { 
     if (breathRelease==true) { //funziona una volta sola solamente quando rilascio il fiato dopo aver soffiato
-      //lastNote = 0b0111111111111111;
       breathAttack=true;
       breathRelease=false;
       //fai smettere di suonare l'ultima nota suonata
-      MIDI.sendNoteOff(((currentOctave+octave)*12)+(noteArray[lastNote]+noteArray[currentKey]),velocity,1);   
+      MIDI.sendNoteOff(lastNote,velocity,1);   
     }  
   }
   
