@@ -1,9 +1,7 @@
-#include <BLEMIDI_Transport.h>
-#include <hardware/BLEMIDI_ESP32.h>
-#include <Wire.h>
 
-const int HX_OUT_PIN = 4;
-const int HX_SCK_PIN = 2;
+
+const int HX_OUT_PIN = 5;
+const int HX_SCK_PIN = 15;
 
 enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
