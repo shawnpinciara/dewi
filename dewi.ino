@@ -60,7 +60,7 @@ void setup() {
 void loop() {
 
 
-  breath = analogRead(32);
+  breath = 400;
   
   if (breath > threshold) {
     //lettura valori e manipolazione i bit
@@ -75,6 +75,7 @@ void loop() {
       breathAttack=false; //cambio lo stato cosi non ci entro piu in questo if
       breathRelease = true; //accendo la possibilià di entrare nell'if di quando interromperò il fiato
       MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
+      Serial.println(currentNote);
     } else { //durante la soffiata (si ripete continuamente)
       if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza
         //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
@@ -101,5 +102,3 @@ void loop() {
   //delay(500);
     
 }
-
-

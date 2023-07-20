@@ -1,7 +1,7 @@
 
 
-const int HX_OUT_PIN = 5;
-const int HX_SCK_PIN = 15;
+const int HX_OUT_PIN = 39;
+const int HX_SCK_PIN = 36;
 
 enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
