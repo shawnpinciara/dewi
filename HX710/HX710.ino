@@ -1,7 +1,12 @@
 
 
+<<<<<<< HEAD
 const int HX_OUT_PIN = 39;
 const int HX_SCK_PIN = 36;
+=======
+const int HX_OUT_PIN = 36;
+const int HX_SCK_PIN = 39;
+>>>>>>> 9390d750d6960215a5d51a0a51fa839afbf206b8
 
 enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
@@ -36,7 +41,7 @@ unsigned long readHX() {
   data[2] ^= 0x80;  // see note
 
   // shift the 3 bytes into a large integer
-  long result;
+  long result;Serial.println(readHX());
   result += (long)data[2] << 16;
   result += (long)data[1] << 8;
   result += (long)data[0];
