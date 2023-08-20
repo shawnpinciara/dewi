@@ -10,6 +10,12 @@
 //LEFT HAND: near:  15 - 2 - 4 - 32
 //RIGHT HAND: near: 12 - 14 - 27 - 33
 
+//BREATH SENSOR
+const int HX_OUT_PIN = 0;
+const int HX_SCK_PIN = 2;
+enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
+const byte HX_MODE = DIFF_40Hz;
+//16689194 base, 8595203 piano,10305762 forte
 
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
 const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,0,0,16,10,6,8};
@@ -18,8 +24,9 @@ char scale[] = {'C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C','C#','D
 // boolean ottavaSopra = false;
 int octave = 5;
 int velocity = 60;
-int threshold = 300;
-int breath = 0;
+int threshold_bottom = 8000000;
+int threshold_top = 13000000;
+unsigned long breath = 0;
 const uint16_t mask_key = 0b0000000011110000;
 const uint16_t mask_note = 0b0000000000001111;
 const uint16_t mask_octave = 0b0000111100000000;
@@ -37,9 +44,33 @@ boolean breathRelease = false;
 Adafruit_MPR121 mpr = Adafruit_MPR121();
 BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
 
+void computeHX() {
+  // pulse clock line to start a reading
+  for (char i = 0; i < HX_MODE; i++) {
+    digitalWrite(HX_SCK_PIN, HIGH);
+    digitalWrite(HX_SCK_PIN, LOW);
+  }
+  // wait for the reading to finish
+  while (digitalRead(HX_OUT_PIN)) {}
 
+  // read the 24-bit pressure as 3 bytes using SPI
+  byte data[3];
+  for (byte j = 3; j--;) {
+    data[j] = shiftIn(HX_OUT_PIN, HX_SCK_PIN, MSBFIRST);
+  }
+  data[2] ^= 0x80;  // see note
+  // shift the 3 bytes into a large integer
+  long result;
+  result += (long)data[2] << 16;
+  result += (long)data[1] << 8;
+  result += (long)data[0];
+  breath = result;
+}
 void setup() {
-  // put your setup code here, to run once:
+  //BREATH SENSOR
+  pinMode(HX_SCK_PIN, OUTPUT);
+  pinMode(HX_OUT_PIN, INPUT);
+  
   MIDI.begin(10);
   Serial.begin(115200);
 
@@ -60,9 +91,9 @@ void setup() {
 void loop() {
 
 
-  breath = 400;
+  computeHX();
   
-  if (breath > threshold) {
+  if (breath > threshold_bottom && breath < threshold_top) {
     //lettura valori e manipolazione i bit
     mpr121 = mpr.touched(); //valore letto da sensore (12 bit: 00000000000)
     currentKey = (mpr121 & mask_key)>>4;
