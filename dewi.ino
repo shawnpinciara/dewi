@@ -95,6 +95,7 @@ void loop() {
   
   if (breath > threshold_bottom && breath < threshold_top) {
     //lettura valori e manipolazione i bit
+    velocity = map(breath,8500000,10310000,40,127);
     mpr121 = mpr.touched(); //valore letto da sensore (12 bit: 00000000000)
     currentKey = (mpr121 & mask_key)>>4;
     currentOctave = (mpr121 & mask_octave)>>8; //TODO: attaccare fisicamente i sensori all'arduino
@@ -109,6 +110,7 @@ void loop() {
       Serial.println(currentNote);
     } else { //durante la soffiata (si ripete continuamente)
       if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza
+        velocity = map(breath,8500000,10310000,40,127);
         //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
         MIDI.sendNoteOff(lastNote,velocity,1);
         //aggiorna valore di nota precedente
