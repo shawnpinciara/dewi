@@ -30,6 +30,7 @@ unsigned long breath = 0;
 const uint16_t mask_key = 0b0000000011110000;
 const uint16_t mask_note = 0b0000000000001111;
 const uint16_t mask_octave = 0b0000111100000000;
+const uint16_t mask_cc = 0b0000100000000000;
 uint16_t currentNote = 0;
 uint16_t lastNote = 0b0111111111111111;
 uint16_t sendNote;
@@ -40,6 +41,9 @@ uint16_t lastOctave = 0;
 uint16_t mpr121 = 0;
 boolean breathAttack = true;
 boolean breathRelease = false;
+int cc = 0;
+int cc_debounce = 1;
+int bank = 0;
 
 Adafruit_MPR121 mpr = Adafruit_MPR121();
 BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
@@ -98,10 +102,10 @@ void loop() {
     velocity = map(breath,8500000,10310000,40,127);
     mpr121 = mpr.touched(); //valore letto da sensore (12 bit: 00000000000)
     currentKey = (mpr121 & mask_key)>>4;
-    currentOctave = (mpr121 & mask_octave)>>8; //TODO: attaccare fisicamente i sensori all'arduino
-    // currentNote = mpr121 & mask_note; //maschera per leggere solo le note
+    currentOctave = (mpr121 & mask_octave)>>8; 
+//    cc = (mpr121 & mask_cc) >>11;
     currentNote = ((currentOctave+octave)*12)+(noteArray[mpr121 & mask_note]+noteArray[currentKey]);
-    // sendNote = ((currentOctave+octave)*12)+(noteArray[currentNote]+noteArray[currentKey]);
+
     //gestione del fiato vera e propria
     if (breathAttack) { //all'inizio della soffiata (va una volta sola)
       breathAttack=false; //cambio lo stato cosi non ci entro piu in questo if
@@ -120,6 +124,8 @@ void loop() {
         Serial.println(currentKey); //log
       } else {
         //TODO: inviare segnale midi per cambio di velocity esssendo che la nota suonata è la stessa ma puo variare l'intensità
+        velocity = map(breath,8500000,10310000,40,127);
+        MIDI.send(midi::ControlChange, 11, velocity, 1);
       }
     }
     
@@ -131,6 +137,14 @@ void loop() {
       MIDI.sendNoteOff(lastNote,velocity,1);   
     }  
   }
+
+//  if (cc>0 && cc_debounce == 1) {
+//    MIDI.send(midi::ControlChange, 0, bank, 1);
+//    cc_debounce == 0;
+//  } else {
+//    cc_debounce = 1;
+//    bank++;
+//  }
   
   //delay(500);
     
