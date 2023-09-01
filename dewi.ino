@@ -1,7 +1,16 @@
-#include <BLEMIDI_Transport.h>
-#include <hardware/BLEMIDI_ESP32.h>
 #include <Wire.h>
 #include "Adafruit_MPR121.h"
+
+#define midi_ble
+
+#ifdef midi_ble
+  #include <BLEMIDI_Transport.h>
+  #include <hardware/BLEMIDI_ESP32.h>
+  BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
+#else  
+  #include <MIDI.h>
+  MIDI_CREATE_DEFAULT_INSTANCE();
+#endif
 
 //LINUX port:
 //sudo chmod 0777 /dev/ttyACM0
@@ -46,7 +55,7 @@ int cc_debounce = 1;
 int bank = 0;
 
 Adafruit_MPR121 mpr = Adafruit_MPR121();
-BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
+
 
 void computeHX() {
   // pulse clock line to start a reading
