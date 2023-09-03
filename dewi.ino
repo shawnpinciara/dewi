@@ -1,15 +1,15 @@
 #include <Wire.h>
 #include "Adafruit_MPR121.h"
 
-#define midi_ble
+//#define midi_ble
 
 #ifdef midi_ble
   #include <BLEMIDI_Transport.h>
   #include <hardware/BLEMIDI_ESP32.h>
   BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
 #else  
-  #include <MIDI.h>
-  MIDI_CREATE_DEFAULT_INSTANCE();
+  #include "MIDIUSB.h"
+  //MIDI_CREATE_DEFAULT_INSTANCE();
 #endif
 
 //LINUX port:
@@ -56,7 +56,26 @@ int bank = 0;
 
 Adafruit_MPR121 mpr = Adafruit_MPR121();
 
+//MIDI FUNCTIONS:
+// First parameter is the event type (0x09 = note on, 0x08 = note off).
+// Second parameter is note-on/note-off, combined with the channel.
+// Channel can be anything between 0-15. Typically reported to the user as 1-16.
+// Third parameter is the note number (48 = middle C).
+// Fourth parameter is the velocity (64 = normal, 127 = fastest).
+void noteOn(byte pitch, byte velocity, byte channel) {
+  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
+  MidiUSB.sendMIDI(noteOn);
+}
+void noteOff(byte pitch, byte velocity, byte channel) {
+  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
+  MidiUSB.sendMIDI(noteOff);
+}
+void controlChange(byte value, byte control, byte channel) {
+  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
+  MidiUSB.sendMIDI(event);
+}
 
+//BREATH READ FUNCTION
 void computeHX() {
   // pulse clock line to start a reading
   for (char i = 0; i < HX_MODE; i++) {
@@ -84,7 +103,7 @@ void setup() {
   pinMode(HX_SCK_PIN, OUTPUT);
   pinMode(HX_OUT_PIN, INPUT);
   
-  MIDI.begin(10);
+  //MIDI.begin(10);
   Serial.begin(115200);
 
   //MPR121 setup
@@ -119,22 +138,30 @@ void loop() {
     if (breathAttack) { //all'inizio della soffiata (va una volta sola)
       breathAttack=false; //cambio lo stato cosi non ci entro piu in questo if
       breathRelease = true; //accendo la possibilià di entrare nell'if di quando interromperò il fiato
-      MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
+      //MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
+      noteOn(currentNote, velocity, 1);  // Send a MIDI note 
+      MidiUSB.flush();
       Serial.println(currentNote);
     } else { //durante la soffiata (si ripete continuamente)
       if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza
         velocity = map(breath,8500000,10310000,40,127);
         //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
-        MIDI.sendNoteOff(lastNote,velocity,1);
+        //MIDI.sendNoteOff(lastNote,velocity,1);
+        noteOff(lastNote,velocity,1);
+        MidiUSB.flush();
         //aggiorna valore di nota precedente
         lastNote = currentNote;
         //inizia a suonare la nota premuta
-        MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
+        //MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
+        noteOn(currentNote, velocity, 1);  // Send a MIDI note 
+        MidiUSB.flush();
         Serial.println(currentKey); //log
       } else {
         //TODO: inviare segnale midi per cambio di velocity esssendo che la nota suonata è la stessa ma puo variare l'intensità
         velocity = map(breath,8500000,10310000,40,127);
-        MIDI.send(midi::ControlChange, 11, velocity, 1);
+        //MIDI.send(midi::ControlChange, 11, velocity, 1);
+        controlChange(velocity,11,1);
+        MidiUSB.flush();
       }
     }
     
@@ -143,7 +170,9 @@ void loop() {
       breathAttack=true;
       breathRelease=false;
       //fai smettere di suonare l'ultima nota suonata
-      MIDI.sendNoteOff(lastNote,velocity,1);   
+     // MIDI.sendNoteOff(lastNote,velocity,1);
+      noteOff(lastNote,velocity,1);
+      MidiUSB.flush();   
     }  
   }
 
