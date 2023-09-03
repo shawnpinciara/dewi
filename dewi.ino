@@ -86,7 +86,7 @@ void setup() {
   
   MIDI.begin(10);
   Serial.begin(115200);
-
+//
   //MPR121 setup
   while (!Serial) { // needed to keep leonardo/micro from starting too fast!
     delay(10);
