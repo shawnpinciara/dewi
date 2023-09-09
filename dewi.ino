@@ -1,5 +1,6 @@
 #include <Wire.h>
 #include "Adafruit_MPR121.h"
+//#include <asmsynth.h>
 
 //#define midi_ble
 
@@ -20,18 +21,19 @@
 //RIGHT HAND: near: 12 - 14 - 27 - 33
 
 //BREATH SENSOR
-const int HX_OUT_PIN = 0;
-const int HX_SCK_PIN = 2;
+const int HX_OUT_PIN = 4;
+const int HX_SCK_PIN = 5;
 enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
-//16689194 base, 8595203 piano,10305762 forte
 
+const int piezoPin1 = 6;
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
 const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,0,0,16,10,6,8};
 // int noteIndex[] = {1,3,12,5,1,10,6,8,2,4,0,0,5,11,7,9};
-char scale[] = {'C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C','C#','D','D#','E','F','F#','G','G#','A','A#','B'};
+//char scale[] = {'C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C','C#','D','D#','E','F','F#','G','G#','A','A#','B'};
 // boolean ottavaSopra = false;
 int octave = 5;
+//16689194 base, 8595203 piano,10305762 forte
 int velocity = 60;
 int threshold_bottom = 8000000;
 int threshold_top = 13000000;
@@ -97,6 +99,7 @@ void computeHX() {
   result += (long)data[1] << 8;
   result += (long)data[0];
   breath = result;
+  Serial.println(breath);
 }
 void setup() {
   //BREATH SENSOR
@@ -104,25 +107,37 @@ void setup() {
   pinMode(HX_OUT_PIN, INPUT);
   
   //MIDI.begin(10);
-  Serial.begin(115200);
+  Serial1.begin(115200);
 
   //MPR121 setup
-  while (!Serial) { // needed to keep leonardo/micro from starting too fast!
+  while (!Serial1) { // needed to keep leonardo/micro from starting too fast!
     delay(10);
   }
-  Serial.println("Adafruit MPR121 Capacitive Touch sensor test"); 
+  Serial1.println("Adafruit MPR121 Capacitive Touch sensor test"); 
   // Default address is 0x5A, if tied to 3.3V its 0x5B
   // If tied to SDA its 0x5C and if SCL then 0x5D
   if (!mpr.begin(0x5A)) {
-    Serial.println("MPR121 not found, check wiring?");
+    Serial1.println("MPR121 not found, check wiring?");
     while (1);
   }
-  Serial.println("MPR121 found!");
+  Serial1.println("MPR121 found!");
+  tone(piezoPin1,300);
+  delay(300);
+  noTone(piezoPin1);
 }
 
 void loop() {
 
-
+  //TODO Romeo: togliere il commento da queste righe e vedere se manda veramente i segnali midi a logic
+  // Serial.println("Sending note on");
+  // noteOn(0, 50, 64);   // Channel 0, middle C, normal velocity
+  // MidiUSB.flush();
+  // delay(500);
+  // Serial.println("Sending note off");
+  // noteOff(0, 50, 64);  // Channel 0, middle C, normal velocity
+  // MidiUSB.flush();
+  // delay(1500);
+  
   computeHX();
   
   if (breath > threshold_bottom && breath < threshold_top) {
@@ -141,7 +156,7 @@ void loop() {
       //MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
       noteOn(currentNote, velocity, 1);  // Send a MIDI note 
       MidiUSB.flush();
-      Serial.println(currentNote);
+      Serial1.println(currentNote);
     } else { //durante la soffiata (si ripete continuamente)
       if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza
         velocity = map(breath,8500000,10310000,40,127);
@@ -155,7 +170,7 @@ void loop() {
         //MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
         noteOn(currentNote, velocity, 1);  // Send a MIDI note 
         MidiUSB.flush();
-        Serial.println(currentKey); //log
+        Serial1.println(currentKey); //log
       } else {
         //TODO: inviare segnale midi per cambio di velocity esssendo che la nota suonata è la stessa ma puo variare l'intensità
         velocity = map(breath,8500000,10310000,40,127);
