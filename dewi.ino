@@ -29,14 +29,15 @@ const byte HX_MODE = DIFF_40Hz;
 const int piezoPin1 = 6;
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
 const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,0,0,16,10,6,8};
+const int keyArray[16] = {0,2,11,4,0,9,5,7,1,3,0,0,16,10,6,8};
 // int noteIndex[] = {1,3,12,5,1,10,6,8,2,4,0,0,5,11,7,9};
 //char scale[] = {'C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C','C#','D','D#','E','F','F#','G','G#','A','A#','B'};
 // boolean ottavaSopra = false;
 int octave = 5;
 //16689194 base, 8595203 piano,10305762 forte
-int velocity = 60;
-int threshold_bottom = 8000000;
-int threshold_top = 13000000;
+unsigned int velocity = 60;
+unsigned long threshold_bottom = 8100000;
+unsigned long threshold_top = 14000000;
 unsigned long breath = 0;
 const uint16_t mask_key = 0b0000000011110000;
 const uint16_t mask_note = 0b0000000000001111;
@@ -46,7 +47,7 @@ uint16_t currentNote = 0;
 uint16_t lastNote = 0b0111111111111111;
 uint16_t sendNote;
 uint16_t currentKey = 0;
-uint16_t lastKey = 0;
+uint16_t lastKey = 1;
 uint16_t currentOctave = 0;
 uint16_t lastOctave = 0;
 uint16_t mpr121 = 0;
@@ -67,10 +68,12 @@ Adafruit_MPR121 mpr = Adafruit_MPR121();
 void noteOn(byte pitch, byte velocity, byte channel) {
   midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
   MidiUSB.sendMIDI(noteOn);
+  //MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note
 }
 void noteOff(byte pitch, byte velocity, byte channel) {
   midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
   MidiUSB.sendMIDI(noteOff);
+  //MIDI.sendNoteOff(lastNote,velocity,1);
 }
 void controlChange(byte value, byte control, byte channel) {
   midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
@@ -99,7 +102,7 @@ void computeHX() {
   result += (long)data[1] << 8;
   result += (long)data[0];
   breath = result;
-  Serial.println(breath);
+  
 }
 void setup() {
   //BREATH SENSOR
@@ -107,20 +110,20 @@ void setup() {
   pinMode(HX_OUT_PIN, INPUT);
   
   //MIDI.begin(10);
-  Serial1.begin(115200);
+  Serial.begin(115200);
 
   //MPR121 setup
   while (!Serial1) { // needed to keep leonardo/micro from starting too fast!
     delay(10);
   }
-  Serial1.println("Adafruit MPR121 Capacitive Touch sensor test"); 
+  Serial.println("Adafruit MPR121 Capacitive Touch sensor test"); 
   // Default address is 0x5A, if tied to 3.3V its 0x5B
   // If tied to SDA its 0x5C and if SCL then 0x5D
   if (!mpr.begin(0x5A)) {
-    Serial1.println("MPR121 not found, check wiring?");
+    Serial.println("MPR121 not found, check wiring?");
     while (1);
   }
-  Serial1.println("MPR121 found!");
+  Serial.println("MPR121 found!");
   tone(piezoPin1,300);
   delay(300);
   noTone(piezoPin1);
@@ -139,16 +142,25 @@ void loop() {
   // delay(1500);
   
   computeHX();
-  
-  if (breath > threshold_bottom && breath < threshold_top) {
+  if (breath > threshold_bottom) {
     //lettura valori e manipolazione i bit
-    velocity = map(breath,8500000,10310000,40,127);
+    velocity = map(breath,threshold_bottom,threshold_top,40,127);
+    lastKey = currentKey;
     mpr121 = mpr.touched(); //valore letto da sensore (12 bit: 00000000000)
+
     currentKey = (mpr121 & mask_key)>>4;
+    if (currentKey == 0) {
+      currentKey = lastKey;
+      Serial.print(" Current KEY IS 0");
+    }
     currentOctave = (mpr121 & mask_octave)>>8; 
 //    cc = (mpr121 & mask_cc) >>11;
-    currentNote = ((currentOctave+octave)*12)+(noteArray[mpr121 & mask_note]+noteArray[currentKey]);
-
+    currentNote = ((currentOctave+octave)*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
+    Serial.print("Breath " + String(breath));
+    Serial.print(" , Threshold " + String(threshold_bottom));
+    Serial.print(" , Velocity " + String(velocity));
+    Serial.print(" , CurrentKey " + String(keyArray[currentKey]));
+    Serial.println(" , Breath>threshold: " + String(breath > threshold_bottom));
     //gestione del fiato vera e propria
     if (breathAttack) { //all'inizio della soffiata (va una volta sola)
       breathAttack=false; //cambio lo stato cosi non ci entro piu in questo if
@@ -156,24 +168,23 @@ void loop() {
       //MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
       noteOn(currentNote, velocity, 1);  // Send a MIDI note 
       MidiUSB.flush();
-      Serial1.println(currentNote);
+      Serial.println(currentNote);
     } else { //durante la soffiata (si ripete continuamente)
       if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza
-        velocity = map(breath,8500000,10310000,40,127);
+        
         //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
-        //MIDI.sendNoteOff(lastNote,velocity,1);
+        
         noteOff(lastNote,velocity,1);
         MidiUSB.flush();
         //aggiorna valore di nota precedente
         lastNote = currentNote;
         //inizia a suonare la nota premuta
-        //MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
+         
         noteOn(currentNote, velocity, 1);  // Send a MIDI note 
         MidiUSB.flush();
-        Serial1.println(currentKey); //log
+        Serial.println(currentKey); //log
       } else {
         //TODO: inviare segnale midi per cambio di velocity esssendo che la nota suonata è la stessa ma puo variare l'intensità
-        velocity = map(breath,8500000,10310000,40,127);
         //MIDI.send(midi::ControlChange, 11, velocity, 1);
         controlChange(velocity,11,1);
         MidiUSB.flush();
