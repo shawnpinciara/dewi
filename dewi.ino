@@ -30,6 +30,7 @@ const int piezoPin1 = 6;
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
 const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,0,0,16,10,6,8};
 const int keyArray[16] = {0,2,11,4,0,9,5,7,1,3,0,0,16,10,6,8};
+const int octaveArray[16] = {0,1,-1,0,0,0,0,0,-2,-1,-3,0,0,0,0,0};
 // int noteIndex[] = {1,3,12,5,1,10,6,8,2,4,0,0,5,11,7,9};
 //char scale[] = {'C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C','C#','D','D#','E','F','F#','G','G#','A','A#','B'};
 // boolean ottavaSopra = false;
@@ -155,11 +156,12 @@ void loop() {
     }
     currentOctave = (mpr121 & mask_octave)>>8; 
 //    cc = (mpr121 & mask_cc) >>11;
-    currentNote = ((currentOctave+octave)*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
+    currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
     Serial.print("Breath " + String(breath));
     Serial.print(" , Threshold " + String(threshold_bottom));
     Serial.print(" , Velocity " + String(velocity));
     Serial.print(" , CurrentKey " + String(keyArray[currentKey]));
+    Serial.print(" , CurrentOctave " + String(currentOctave));
     Serial.println(" , Breath>threshold: " + String(breath > threshold_bottom));
     //gestione del fiato vera e propria
     if (breathAttack) { //all'inizio della soffiata (va una volta sola)
