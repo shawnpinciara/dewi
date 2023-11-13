@@ -76,6 +76,11 @@ void noteOff(byte pitch, byte velocity, byte channel) {
   MidiUSB.sendMIDI(noteOff);
   //MIDI.sendNoteOff(lastNote,velocity,1);
 }
+void channelPressure(byte value) {
+  midiEventPacket_t event = {0x0D, 0b11010001, value};
+  MidiUSB.sendMIDI(event);
+}
+
 void controlChange(byte value, byte control, byte channel) {
   midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
   MidiUSB.sendMIDI(event);
@@ -187,8 +192,7 @@ void loop() {
         Serial.println(currentKey); //log
       } else {
         //TODO: inviare segnale midi per cambio di velocity esssendo che la nota suonata è la stessa ma puo variare l'intensità
-        //MIDI.send(midi::ControlChange, 11, velocity, 1);
-        controlChange(velocity,11,1);
+        channelPressure(velocity);
         MidiUSB.flush();
       }
     }
