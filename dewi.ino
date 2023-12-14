@@ -86,6 +86,21 @@ void controlChange(byte value, byte control, byte channel) {
   MidiUSB.sendMIDI(event);
 }
 
+void allNotesOff() {
+  midiEventPacket_t event = {0x7B, 0x00};
+  MidiUSB.sendMIDI(event);
+}
+
+void allSoundsOff() {
+  midiEventPacket_t event = {0x78, 0x00};
+  MidiUSB.sendMIDI(event);
+}
+
+void monoMode() {
+  midiEventPacket_t event = {0x7E, 0x01};
+  MidiUSB.sendMIDI(event);
+}
+
 //BREATH READ FUNCTION
 void computeHX() {
   // pulse clock line to start a reading
@@ -133,9 +148,11 @@ void setup() {
   tone(piezoPin1,300);
   delay(300);
   noTone(piezoPin1);
+  monoMode();
 }
 
 void loop() {
+  int startTimer = millis();
 
   //TODO Romeo: togliere il commento da queste righe e vedere se manda veramente i segnali midi a logic
   // Serial.println("Sending note on");
@@ -148,6 +165,7 @@ void loop() {
   // delay(1500);
   
   computeHX();
+  int endComputeHX = millis();
   if (breath > threshold_bottom) {
     //lettura valori e manipolazione i bit
     velocity = map(breath,threshold_bottom,threshold_top,40,127);
@@ -183,6 +201,7 @@ void loop() {
         
         noteOff(lastNote,velocity,1);
         MidiUSB.flush();
+        allSoundsOff();
         //aggiorna valore di nota precedente
         lastNote = currentNote;
         //inizia a suonare la nota premuta
@@ -205,6 +224,7 @@ void loop() {
      // MIDI.sendNoteOff(lastNote,velocity,1);
       noteOff(lastNote,velocity,1);
       MidiUSB.flush();   
+      allSoundsOff();
     }  
   }
 
@@ -217,5 +237,8 @@ void loop() {
 //  }
   
   //delay(500);
+  Serial.print("ComputeHX time: " + String(startTime - endComputeHX));
+  Serial.print("Loop time: " + String(millis()-startTimer));
+  Serial.println();
     
 }
