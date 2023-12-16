@@ -28,13 +28,13 @@ const byte HX_MODE = DIFF_40Hz;
 
 const int piezoPin1 = 6;
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
-const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,0,0,16,10,6,8};
-const int keyArray[16] = {0,2,11,4,0,9,5,7,1,3,0,0,16,10,6,8};
-const int octaveArray[16] = {0,1,-1,0,0,0,0,0,-2,-1,-3,0,0,0,0,0};
+const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,12,5,16,10,6,8};
+const int keyArray[16] =  {0,2,11,4,0,9,5,7,1,3,0,5,16,10,6,8};
+const int octaveArray[16] = {0,1,-1,0,-2,-1,-3,0,0,0,0,0,0,0,0,0}; //missing button is X000, change octave is 0X00, -1 (X) e +1 (Y) octave is 00XY
 // int noteIndex[] = {1,3,12,5,1,10,6,8,2,4,0,0,5,11,7,9};
 //char scale[] = {'C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C','C#','D','D#','E','F','F#','G','G#','A','A#','B'};
 // boolean ottavaSopra = false;
-int octave = 5;
+int octave = 6;
 //16689194 base, 8595203 piano,10305762 forte
 unsigned int velocity = 60;
 unsigned long threshold_bottom = 8100000;
@@ -43,7 +43,7 @@ unsigned long breath = 0;
 const uint16_t mask_key = 0b0000000011110000;
 const uint16_t mask_note = 0b0000000000001111;
 const uint16_t mask_octave = 0b0000111100000000;
-const uint16_t mask_cc = 0b0000100000000000;
+//const uint16_t mask_cc = 0b0000100000000000;
 uint16_t currentNote = 0;
 uint16_t lastNote = 0b0111111111111111;
 uint16_t sendNote;
@@ -52,8 +52,8 @@ uint16_t lastKey = 1;
 uint16_t currentOctave = 0;
 uint16_t lastOctave = 0;
 uint16_t mpr121 = 0;
-boolean breathAttack = true;
-boolean breathRelease = false;
+bool breathAttack = true;
+bool breathRelease = false;
 int cc = 0;
 int cc_debounce = 1;
 int bank = 0;
@@ -86,18 +86,18 @@ void controlChange(byte value, byte control, byte channel) {
   MidiUSB.sendMIDI(event);
 }
 
-void allNotesOff() {
-  midiEventPacket_t event = {0x7B, 0x00};
+void allNotesOff(byte channel) {
+  midiEventPacket_t event = {0x7B, 0x00 | channel};
   MidiUSB.sendMIDI(event);
 }
 
-void allSoundsOff() {
-  midiEventPacket_t event = {0x78, 0x00};
+void allSoundsOff(byte channel) {
+  midiEventPacket_t event = {0x78, 0x00 | channel};
   MidiUSB.sendMIDI(event);
 }
 
-void monoMode() {
-  midiEventPacket_t event = {0x7E, 0x01};
+void monoMode(byte channel) {
+  midiEventPacket_t event = {0x01111110, 0x01 | channel};
   MidiUSB.sendMIDI(event);
 }
 
@@ -123,8 +123,8 @@ void computeHX() {
   result += (long)data[1] << 8;
   result += (long)data[0];
   breath = result;
-  
 }
+
 void setup() {
   //BREATH SENSOR
   pinMode(HX_SCK_PIN, OUTPUT);
@@ -148,24 +148,18 @@ void setup() {
   tone(piezoPin1,300);
   delay(300);
   noTone(piezoPin1);
-  monoMode();
+  monoMode(1);
 }
 
+//MAIN
 void loop() {
   int startTimer = millis();
 
-  //TODO Romeo: togliere il commento da queste righe e vedere se manda veramente i segnali midi a logic
-  // Serial.println("Sending note on");
-  // noteOn(0, 50, 64);   // Channel 0, middle C, normal velocity
-  // MidiUSB.flush();
-  // delay(500);
-  // Serial.println("Sending note off");
-  // noteOff(0, 50, 64);  // Channel 0, middle C, normal velocity
-  // MidiUSB.flush();
-  // delay(1500);
+  //delay(5); //ALERT!
   
   computeHX();
   int endComputeHX = millis();
+
   if (breath > threshold_bottom) {
     //lettura valori e manipolazione i bit
     velocity = map(breath,threshold_bottom,threshold_top,40,127);
@@ -175,25 +169,32 @@ void loop() {
     currentKey = (mpr121 & mask_key)>>4;
     if (currentKey == 0) {
       currentKey = lastKey;
-      Serial.print(" Current KEY IS 0");
+      //Serial.print(" Current KEY IS 0");
     }
     currentOctave = (mpr121 & mask_octave)>>8; 
-//    cc = (mpr121 & mask_cc) >>11;
+      //cc = (mpr121 & mask_cc) >>11;
     currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
-    Serial.print("Breath " + String(breath));
-    Serial.print(" , Threshold " + String(threshold_bottom));
-    Serial.print(" , Velocity " + String(velocity));
-    Serial.print(" , CurrentKey " + String(keyArray[currentKey]));
-    Serial.print(" , CurrentOctave " + String(currentOctave));
-    Serial.println(" , Breath>threshold: " + String(breath > threshold_bottom));
     //gestione del fiato vera e propria
     if (breathAttack) { //all'inizio della soffiata (va una volta sola)
       breathAttack=false; //cambio lo stato cosi non ci entro piu in questo if
       breathRelease = true; //accendo la possibilià di entrare nell'if di quando interromperò il fiato
       //MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note 
-      noteOn(currentNote, velocity, 1);  // Send a MIDI note 
+      computeHX();
+      velocity = map(breath,threshold_bottom,threshold_top,40,127);
+      int startTimer = millis();
+      //while (millis() - startTimer < 100) {
+      //computeHX();
+      //}
+      velocity = map(breath,threshold_bottom,threshold_top,40,127);
+      //AHHHHHHHHHHHHH
+      noteOn(currentNote, velocity, 1);  // Send a MIDI note
+      Serial.print("Breath " + String(breath));
+      Serial.print(" , Threshold " + String(threshold_bottom));
+      Serial.print(" , Velocity " + String(velocity));
+      Serial.print(" , CurrentKey " + String(keyArray[currentKey]));
+      Serial.print(" , CurrentOctave " + String(currentOctave));
+      Serial.println(" , Breath>threshold: " + String(breath > threshold_bottom));
       MidiUSB.flush();
-      Serial.println(currentNote);
     } else { //durante la soffiata (si ripete continuamente)
       if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza
         
@@ -201,11 +202,9 @@ void loop() {
         
         noteOff(lastNote,velocity,1);
         MidiUSB.flush();
-        allSoundsOff();
         //aggiorna valore di nota precedente
         lastNote = currentNote;
         //inizia a suonare la nota premuta
-         
         noteOn(currentNote, velocity, 1);  // Send a MIDI note 
         MidiUSB.flush();
         Serial.println(currentKey); //log
@@ -215,18 +214,18 @@ void loop() {
         MidiUSB.flush();
       }
     }
-    
   } else { 
     if (breathRelease==true) { //funziona una volta sola solamente quando rilascio il fiato dopo aver soffiato
       breathAttack=true;
       breathRelease=false;
       //fai smettere di suonare l'ultima nota suonata
-     // MIDI.sendNoteOff(lastNote,velocity,1);
+      // MIDI.sendNoteOff(lastNote,velocity,1);
       noteOff(lastNote,velocity,1);
-      MidiUSB.flush();   
-      allSoundsOff();
+      MidiUSB.flush();
     }  
   }
+
+  lastNote = currentNote;
 
 //  if (cc>0 && cc_debounce == 1) {
 //    MIDI.send(midi::ControlChange, 0, bank, 1);
@@ -237,8 +236,7 @@ void loop() {
 //  }
   
   //delay(500);
-  Serial.print("ComputeHX time: " + String(startTime - endComputeHX));
+  Serial.print("ComputeHX time: " + String(startTimer - endComputeHX));
   Serial.print("Loop time: " + String(millis()-startTimer));
   Serial.println();
-    
 }
