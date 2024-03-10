@@ -8,36 +8,6 @@ The notes of one scale can be encoded with 3 buttons (2^3 for the white keys) an
 
 Mapping the 4 buttons to the 12 notes has been a challenge but we found a good balance between beeing logical and organic:
 
-//TODO SHAWN: disegno con i 4 bottoni e le note corrispondenti
-
-## Why Diatonical?
-//TODO ROMEO: spiegare perchè la scelta di farla diatonica (seguendo il discorso accennato sopra)
-
-## Schematics & BOM
-### Schematics:
-//TODO SHAWN: foto schematiche
-### BOM:
-- ESP32 DEVKIT-V1-38 pin microcontroller
-- hx710b breath sensor (based on the MPS20N0040D-D)
-- MPR121 touch sensor (you can technically use the 7 embedded esp32 touch pins)
-
-Misc (but kinda essential):
-- Paper metal fix (perfect as metal touch buttons, they can be plugged on jumpercables too)
-
-## Installation:
-The following libraries should be installed:
-//TODO SHAWN: mettere lista di
-
-Then you can upload the dewi.ino onto your board.
-
-## Implementation (if you want to use another type of microcontroller)
-### How the code works:
-- implementazione codice
-
-### Future implementation:
-- Using interrupts
-- Adding MIDI DIN 5 pin support
-- On board battery with support circuitery
-- Adding OSC support
-- Responsive lights' show
+## Project info:
+Look at: https://shawnpinciara.github.io/dewi
 
