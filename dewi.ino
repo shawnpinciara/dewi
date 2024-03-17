@@ -36,8 +36,8 @@ const byte HX_MODE = DIFF_40Hz;
 
 //MODWHEEL
 #define modWheel A0
-int modwheelVal = 999;
-int modwheelValNew;
+uint16_t modwheelVal = 999;
+uint16_t modwheelValNew;
 
 //POT
 #define pot A1
@@ -212,8 +212,16 @@ void updatePot() {
 void updateModwheel() {
   modwheelValNew = analogRead(modWheel); // min (avanti) 350 - 500 - 650 max
   if (modwheelVal != modwheelValNew) {
-    modwheelVal = map(modwheelValNew,650,350,0,127);
-    controlChange(0,7,modwheelVal);
+    modwheelVal = modwheelValNew;
+    if (modwheelVal <= 500-5) {
+      modwheelVal = map(modwheelValNew,500-5,350,8192,32639); //TODO: to analyze if true
+      pitchWheel(0,modwheelVal);
+    } else if (modwheelVal >= 500+5) {
+      modwheelVal = map(modwheelValNew,500+5,650,8192,0);
+      pitchWheel(0,modwheelVal);
+    } else {
+      pitchWheel(0,8192); //middle rest position
+    }
     Serial.println(modwheelVal);
   }
 }
