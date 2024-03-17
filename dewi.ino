@@ -156,7 +156,7 @@ void updateBreath() {
         breathAttack=false; //cambio lo stato cosi non ci entro piu in questo if
         breathRelease = true; //accendo la possibilià di entrare nell'if di quando interromperò il fiato
         velocity = map(breath,threshold_bottom,threshold_top,40,127);
-        noteOn(currentNote, velocity,0);
+        noteOn(0,currentNote, velocity);
         /*
         Serial.print("Breath " + String(breath));
         Serial.print(" , Threshold " + String(threshold_bottom));
@@ -166,19 +166,19 @@ void updateBreath() {
         Serial.println(" , Breath>threshold: " + String(breath > threshold_bottom));*/
       } else { //durante la soffiata (si ripete continuamente)
         if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza          
-          noteOff(lastNote,velocity,0);    //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
+          noteOff(0,lastNote,velocity);    //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
           lastNote = currentNote; //aggiorna valore di nota precedente
-          noteOn(currentNote, velocity,0);  //inizia a suonare la nota premuta
+          noteOn(0,currentNote, velocity);  //inizia a suonare la nota premuta
           //Serial.println(currentKey); //log
         } else {
-          channelPressure(currentNote, velocity);
+          channelPressure(0, currentNote, velocity);
         }
       }
     } else { 
       if (breathRelease==true) { //funziona una volta sola solamente quando rilascio il fiato dopo aver soffiato
         breathAttack=true;
         breathRelease=false;
-        noteOff(lastNote,velocity,1); //fai smettere di suonare l'ultima nota suonata
+        noteOff(0,lastNote,velocity,1); //fai smettere di suonare l'ultima nota suonata
       }  
     }
 
@@ -195,7 +195,7 @@ void updateEncoder() {
       encoderVal--;
     }
     encoderPos = encoderPosNew;
-    controlChange(encoderVal,1,0);
+    controlChange(0,1,encoderVal);
     Serial.println(encoderVal);
   }
 }
@@ -204,7 +204,7 @@ void updatePot() {
   potValNew = analogRead(pot);
   if (potVal != potValNew) {
     potVal = potValNew;
-    controlChange(map(potVal,1023,0,0,127),7,1);
+    controlChange(0,7,map(potVal,1023,0,0,127));
     //Serial.print(potVal);
   }
 }
@@ -213,7 +213,7 @@ void updateModwheel() {
   modwheelValNew = analogRead(modWheel); // min (avanti) 350 - 500 - 650 max
   if (modwheelVal != modwheelValNew) {
     modwheelVal = map(modwheelValNew,650,350,0,127);
-    controlChange(modwheelVal,7,1);
+    controlChange(0,7,modwheelVal);
     Serial.println(modwheelVal);
   }
 }

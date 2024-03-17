@@ -4,6 +4,14 @@
 // Channel can be anything between 0-15. Typically reported to the user as 1-16.
 // Third parameter is the note number (48 = middle C).
 // Fourth parameter is the velocity (64 = normal, 127 = fastest).
+
+
+
+//TODO: the order of bytes is wrong, DONT USE ANY OF THIS NOW
+
+
+
+
 void noteOn(byte pitch, byte velocity, byte channel) {
   midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
   MidiUSB.sendMIDI(noteOn);
