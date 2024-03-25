@@ -29,8 +29,7 @@ void pitchWheel(byte channel, uint16_t value) {
   //The middle position is: 00100000 00000000 (which is int 8192)
   //So the max number should be 01111111 01111111 (which is int 32639)
   Serial1.write(0b11100000 | channel);
-  Serial1.write(value && 0b0111111101111111)
-
+  Serial1.write(value && 0b0111111101111111);
 }
 
 void allNotesOff(byte channel) {
