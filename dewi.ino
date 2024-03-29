@@ -2,15 +2,17 @@
 #include "Adafruit_MPR121.h"
 #include <Encoder.h>
 
-//#define midi_ble
-#define serial_midi
+#define midi_ble
+//#define serial_midi
 
 #ifdef midi_ble
   #include <BLEMIDI_Transport.h>
   //#include <hardware/BLEMIDI_ESP32.h>
   #include <hardware/BLEMIDI_ESP32_NimBLE.h>
   BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
-#else  
+#elif serial_midi
+  #include "MIDI.h"
+#else
   #include "MIDIUSB.h"
   //MIDI_CREATE_DEFAULT_INSTANCE();
 #endif
@@ -19,9 +21,7 @@
 
 #ifdef midi_ble
   #include "midi_functions_BLE.hpp"
-#endif
-
-#ifdef serial_midi
+#elif serial_midi
   #include "midi_functions_serial.hpp"
 #else
   #include "midi_functions_usb.hpp"
