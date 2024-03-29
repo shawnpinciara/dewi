@@ -3,29 +3,8 @@
 #include <Encoder.h>
 
 //OPTIONS:
+#include "presets/preset_dewi_micro_mpr121.h"
 
-//Only one of these 4 can be defined:
-#define serial_midi //midi serial or midi usb (if device is midi compliant)
-//#define midi_ble //for midi bluetooth
-//#define usb_midi
-//#define synth //to synthetize audio and not only send midi
-
-#ifdef midi_ble
-  #include <BLEMIDI_Transport.h>
-  #include <hardware/BLEMIDI_ESP32.h>
-  BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
-#endif
-#ifdef serial_midi
-  #include "midi_functions_serial.hpp"
-#endif
-#ifdef usb_midi
-  #include "midi_functions_usb.hpp"
-#endif
-#ifdef synth
-  #include "synth.hpp"
-#endif
-
-#include "breath_sensor.hpp"
 //LINUX port:
 //sudo chmod 0777 /dev/ttyACM0
 
@@ -111,7 +90,7 @@ void setup() {
 }
 
 void updateBreath() {
-    breath = computeHX(HX_SCK_PIN,HX_OUT_PIN,HX_MODE);
+    breath = getBreath(HX_SCK_PIN,HX_OUT_PIN,HX_MODE);
     //int endComputeHX = millis();
 
     if (breath > threshold_bottom) {

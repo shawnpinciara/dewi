@@ -1,7 +1,7 @@
 //Sensor: HX710B
 
 //BREATH READ FUNCTION
-long computeHX(int HX_SCK_PIN, int HX_OUT_PIN, byte HX_MODE) {
+long getBreath(int HX_SCK_PIN, int HX_OUT_PIN, byte HX_MODE) {
   // pulse clock line to start a reading
   for (char i = 0; i < HX_MODE; i++) {
     digitalWrite(HX_SCK_PIN, HIGH);
