@@ -12,24 +12,24 @@
 
 
 
-void noteOn(byte pitch, byte velocity, byte channel) {
+void noteOn(byte channel,byte pitch, byte velocity) {
   midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
   MidiUSB.sendMIDI(noteOn);
   MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note
 }
 
-void noteOff(byte pitch, byte velocity, byte channel) {
+void noteOff(byte channel,byte pitch, byte velocity) {
   midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
   MidiUSB.sendMIDI(noteOff);
   MIDI.sendNoteOff(lastNote,velocity,1);
 }
-void channelPressure(byte value) {
-  midiEventPacket_t event = {0x0D, 0b11010001, value};
+void channelPressure(byte channel, byte note,byte velocity) {
+  midiEventPacket_t event = {0x0D, 0b11010001, velocity};
   MidiUSB.sendMIDI(event);
 }
 
-void controlChange(byte value, byte control, byte channel) {
-  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
+void controlChange(byte channel,byte controller_number, byte value) {
+  midiEventPacket_t event = {0x0B, 0xB0 | channel, controller_number, value};
   MidiUSB.sendMIDI(event);
 }
 

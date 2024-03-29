@@ -24,7 +24,7 @@ void controlChange(byte channel,byte controller_number, byte value) {
   Serial1.write(value);
 }
 
-void pitchWheel(byte channel, uint16_t value) {
+void pitchWheel(byte channel, uint16_t value) { //TODO: might not work
   //PitchWheel value is 2 byte value with this form: 0xxxxxxx 0yyyyyyy
   //The middle position is: 00100000 00000000 (which is int 8192)
   //So the max number should be 01111111 01111111 (which is int 32639)

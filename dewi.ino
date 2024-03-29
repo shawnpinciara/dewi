@@ -2,25 +2,30 @@
 #include "Adafruit_MPR121.h"
 #include <Encoder.h>
 
-//#define midi_ble
+//OPTIONS:
+
+//Only one of these 4 can be defined:
+#define serial_midi //midi serial or midi usb (if device is midi compliant)
+//#define midi_ble //for midi bluetooth
+//#define usb_midi
+//#define synth //to synthetize audio and not only send midi
 
 #ifdef midi_ble
   #include <BLEMIDI_Transport.h>
   #include <hardware/BLEMIDI_ESP32.h>
   BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
-#else  
-  #include "MIDIUSB.h"
-  //MIDI_CREATE_DEFAULT_INSTANCE();
 #endif
-
-#define serial_midi
-
 #ifdef serial_midi
   #include "midi_functions_serial.hpp"
-#else
+#endif
+#ifdef usb_midi
   #include "midi_functions_usb.hpp"
 #endif
+#ifdef synth
+  #include "synth.hpp"
+#endif
 
+#include "breath_sensor.hpp"
 //LINUX port:
 //sudo chmod 0777 /dev/ttyACM0
 
@@ -50,6 +55,7 @@ long encoderPos  = -999;
 int encoderVal = 56;
 
 const int piezoPin1 = 6;
+
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
 const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,12,5,16,10,6,8};
 const int keyArray[16] =  {0,2,11,4,0,9,5,7,1,3,0,5,16,10,6,8};
@@ -80,36 +86,7 @@ int bank = 0;
 
 Adafruit_MPR121 mpr = Adafruit_MPR121();
 
-
-
-//BREATH READ FUNCTION
-void computeHX() {
-  // pulse clock line to start a reading
-  for (char i = 0; i < HX_MODE; i++) {
-    digitalWrite(HX_SCK_PIN, HIGH);
-    digitalWrite(HX_SCK_PIN, LOW);
-  }
-  // wait for the reading to finish
-  while (digitalRead(HX_OUT_PIN)) {}
-
-  // read the 24-bit pressure as 3 bytes using SPI
-  byte data[3];
-  for (byte j = 3; j--;) {
-    data[j] = shiftIn(HX_OUT_PIN, HX_SCK_PIN, MSBFIRST);
-  }
-  data[2] ^= 0x80;  // see note
-  // shift the 3 bytes into a large integer
-  long result;
-  result += (long)data[2] << 16;
-  result += (long)data[1] << 8;
-  result += (long)data[0];
-  breath = result;
-}
-
 void setup() {
-  //BREATH SENSOR
-  pinMode(HX_SCK_PIN, OUTPUT);
-  pinMode(HX_OUT_PIN, INPUT);
   pinMode(modWheel, INPUT);
   pinMode(pot, INPUT);
   
@@ -134,7 +111,7 @@ void setup() {
 }
 
 void updateBreath() {
-    computeHX();
+    breath = computeHX(HX_SCK_PIN,HX_OUT_PIN,HX_MODE);
     //int endComputeHX = millis();
 
     if (breath > threshold_bottom) {
@@ -165,18 +142,11 @@ void updateBreath() {
         breathRelease = true; //accendo la possibilià di entrare nell'if di quando interromperò il fiato
         velocity = map(breath,threshold_bottom,threshold_top,40,127);
         noteOn(0,currentNote, velocity);
-        /*Serial.print("Breath " + String(breath));
-        Serial.print(" , Threshold " + String(threshold_bottom));
-        Serial.print(" , Velocity " + String(velocity));
-        Serial.print(" , CurrentKey " + String(keyArray[currentKey]));
-        Serial.print(" , CurrentOctave " + String(currentOctave));
-        Serial.println(" , Breath>threshold: " + String(breath > threshold_bottom));*/
       } else { //durante la soffiata (si ripete continuamente)
         if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza          
           noteOff(0,lastNote,velocity);    //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
           lastNote = currentNote; //aggiorna valore di nota precedente
-          noteOn(0,currentNote, velocity);  //inizia a suonare la nota premuta
-          //Serial.println(currentKey); //log        
+          noteOn(0,currentNote, velocity);  //inizia a suonare la nota premuta      
         } else {
           channelPressure(0, currentNote, velocity);
         }
