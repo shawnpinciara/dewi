@@ -2,8 +2,30 @@
 #include "Adafruit_MPR121.h"
 #include <Encoder.h>
 
-//OPTIONS:
-#include "presets/preset_dewi_micro_mpr121.h"
+#define midi_ble
+//#define serial_midi
+
+#ifdef midi_ble
+  #include <BLEMIDI_Transport.h>
+  //#include <hardware/BLEMIDI_ESP32.h>
+  #include <hardware/BLEMIDI_ESP32_NimBLE.h>
+  BLEMIDI_CREATE_INSTANCE("DEWI",MIDI);
+#elif serial_midi
+  #include "MIDI.h"
+#else
+  #include "MIDIUSB.h"
+  //MIDI_CREATE_DEFAULT_INSTANCE();
+#endif
+
+
+
+#ifdef midi_ble
+  #include "midi_functions_BLE.hpp"
+#elif serial_midi
+  #include "midi_functions_serial.hpp"
+#else
+  #include "midi_functions_usb.hpp"
+#endif
 
 //LINUX port:
 //sudo chmod 0777 /dev/ttyACM0
@@ -34,7 +56,6 @@ long encoderPos  = -999;
 int encoderVal = 56;
 
 const int piezoPin1 = 6;
-
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
 const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,12,5,16,10,6,8};
 const int keyArray[16] =  {0,2,11,4,0,9,5,7,1,3,0,5,16,10,6,8};
@@ -65,7 +86,36 @@ int bank = 0;
 
 Adafruit_MPR121 mpr = Adafruit_MPR121();
 
+
+
+//BREATH READ FUNCTION
+void computeHX() {
+  // pulse clock line to start a reading
+  for (char i = 0; i < HX_MODE; i++) {
+    digitalWrite(HX_SCK_PIN, HIGH);
+    digitalWrite(HX_SCK_PIN, LOW);
+  }
+  // wait for the reading to finish
+  while (digitalRead(HX_OUT_PIN)) {}
+
+  // read the 24-bit pressure as 3 bytes using SPI
+  byte data[3];
+  for (byte j = 3; j--;) {
+    data[j] = shiftIn(HX_OUT_PIN, HX_SCK_PIN, MSBFIRST);
+  }
+  data[2] ^= 0x80;  // see note
+  // shift the 3 bytes into a large integer
+  long result;
+  result += (long)data[2] << 16;
+  result += (long)data[1] << 8;
+  result += (long)data[0];
+  breath = result;
+}
+
 void setup() {
+  //BREATH SENSOR
+  pinMode(HX_SCK_PIN, OUTPUT);
+  pinMode(HX_OUT_PIN, INPUT);
   pinMode(modWheel, INPUT);
   pinMode(pot, INPUT);
   
@@ -90,7 +140,7 @@ void setup() {
 }
 
 void updateBreath() {
-    breath = getBreath(HX_SCK_PIN,HX_OUT_PIN,HX_MODE);
+    computeHX();
     //int endComputeHX = millis();
 
     if (breath > threshold_bottom) {
@@ -105,15 +155,7 @@ void updateBreath() {
         //Serial.print(" Current KEY IS 0");
       }
       currentOctave = (mpr121 & mask_octave)>>8; 
-      //cc = (mpr121 & mask_cc) >>11;
-      
-      /*if (octave == 5) {
-        octave = 3;
-      }
-      else {
-        octave = 5;
-      }*/
-      
+        //cc = (mpr121 & mask_cc) >>11;
       currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
       //gestione del fiato vera e propria
       if (breathAttack) { //all'inizio della soffiata (va una volta sola)
@@ -121,11 +163,19 @@ void updateBreath() {
         breathRelease = true; //accendo la possibilià di entrare nell'if di quando interromperò il fiato
         velocity = map(breath,threshold_bottom,threshold_top,40,127);
         noteOn(0,currentNote, velocity);
+        /*
+        Serial.print("Breath " + String(breath));
+        Serial.print(" , Threshold " + String(threshold_bottom));
+        Serial.print(" , Velocity " + String(velocity));
+        Serial.print(" , CurrentKey " + String(keyArray[currentKey]));
+        Serial.print(" , CurrentOctave " + String(currentOctave));
+        Serial.println(" , Breath>threshold: " + String(breath > threshold_bottom));*/
       } else { //durante la soffiata (si ripete continuamente)
         if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza          
           noteOff(0,lastNote,velocity);    //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
           lastNote = currentNote; //aggiorna valore di nota precedente
-          noteOn(0,currentNote, velocity);  //inizia a suonare la nota premuta      
+          noteOn(0,currentNote, velocity);  //inizia a suonare la nota premuta
+          //Serial.println(currentKey); //log
         } else {
           channelPressure(0, currentNote, velocity);
         }
@@ -134,7 +184,7 @@ void updateBreath() {
       if (breathRelease==true) { //funziona una volta sola solamente quando rilascio il fiato dopo aver soffiato
         breathAttack=true;
         breathRelease=false;
-        noteOff(0,lastNote,velocity); //fai smettere di suonare l'ultima nota suonata
+        noteOff(0,lastNote,velocity,1); //fai smettere di suonare l'ultima nota suonata
       }  
     }
 
@@ -147,36 +197,22 @@ void updateEncoder() {
   if (encoderPos != encoderPosNew) {
     if (encoderPos > encoderPosNew) {
       encoderVal++;
-      //encoderVal=encoderVal+10;
     } else {
       encoderVal--;
-      //encoderVal=encoderVal-10;
-    }
-    if (encoderVal > 127)
-    {
-      encoderVal--;
-      //encoderVal=encoderVal-10;
-    }
-    else if (encoderVal < 0){
-      encoderVal++;
-      //encoderVal=encoderVal+10;
     }
     encoderPos = encoderPosNew;
-    //controlChange(0,1,modwheelVal);
+    controlChange(0,1,encoderVal);
+    Serial.println(encoderVal);
   }
-  controlChange(0,81,encoderVal);
-  Serial.println(encoderVal);
 }
 
 void updatePot() {
   potValNew = analogRead(pot);
-  
   if (potVal != potValNew) {
     potVal = potValNew;
-    
+    controlChange(0,7,map(potVal,1023,0,0,127));
+    //Serial.print(potVal);
   }
-  controlChange(0,117,map(potVal,1023,0,0,127));
-  //Serial.print(potValNew);
 }
 
 void updateModwheel() {
@@ -185,17 +221,13 @@ void updateModwheel() {
     modwheelVal = modwheelValNew;
     if (modwheelVal <= 500-5) {
       modwheelVal = map(modwheelValNew,500-5,350,8192,32639); //TODO: to analyze if true
-      //controlChange(0,74,modwheelVal);
-      //pitchWheel(0,modwheelVal);
+      pitchWheel(0,modwheelVal);
     } else if (modwheelVal >= 500+5) {
       modwheelVal = map(modwheelValNew,500+5,650,8192,0);
-      //controlChange(0,74,modwheelVal);
-      //pitchWheel(0,modwheelVal);
+      pitchWheel(0,modwheelVal);
     } else {
-      //controlChange(0,74,modwheelVal);
-      //pitchWheel(0,8192); //middle rest position
+      pitchWheel(0,8192); //middle rest position
     }
-    controlChange(0,1,modwheelVal);
     Serial.println(modwheelVal);
   }
 }
@@ -205,7 +237,5 @@ void loop() {
   updateBreath();
   updateEncoder();
   //updateModwheel();
-  updatePot();
+  //updatePot();
 }
-
-//300 bpm = 0,2 sec = 200 ms --> è molto...
