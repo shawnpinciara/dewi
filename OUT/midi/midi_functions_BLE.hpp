@@ -4,10 +4,10 @@
 // Channel can be anything between 0-15. Typically reported to the user as 1-16.
 // Third parameter is the note number (48 = middle C).
 // Fourth parameter is the velocity (64 = normal, 127 = fastest).
+d:\Coding\Arduino\dewi\presets\preset_shawn_minidewi.h
 
 
-
-//TODO: the order of bytes is wrong, DONT USE ANY OF THIS NOW
+//TODO: the order of bytes is wrong, DONT USE ANY OF THIS NOWd:\Coding\Arduino\dewi\presets\preset_dewi_micro_mpr121.h
 
 
 

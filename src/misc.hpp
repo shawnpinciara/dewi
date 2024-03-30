@@ -45,3 +45,7 @@ Serial.println();
 // #endif
 
 // #include "breath_sensor.hpp"
+
+
+//LINUX port:
+//sudo chmod 0777 /dev/ttyACM0

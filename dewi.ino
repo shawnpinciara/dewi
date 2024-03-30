@@ -1,22 +1,9 @@
 #include <Wire.h>
-#include "Adafruit_MPR121.h"
 #include <Encoder.h>
 
 //OPTIONS:
 #include "presets/preset_dewi_micro_mpr121.h"
 
-//LINUX port:
-//sudo chmod 0777 /dev/ttyACM0
-
-//PINS:
-//LEFT HAND: near:  15 - 2 - 4 - 32
-//RIGHT HAND: near: 12 - 14 - 27 - 33
-
-//BREATH SENSOR
-const int HX_OUT_PIN = 4;
-const int HX_SCK_PIN = 5;
-enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
-const byte HX_MODE = DIFF_40Hz;
 
 //MODWHEEL
 #define modWheel A0
@@ -69,18 +56,7 @@ void setup() {
   
   Serial1.begin(31250);
 
-  //MPR121 setup
-  while (!Serial1) { // needed to keep leonardo/micro from starting too fast!
-    delay(10);
-  }
-  Serial.println("Adafruit MPR121"); 
-  // Default address is 0x5A, if tied to 3.3V its 0x5B
-  // If tied to SDA its 0x5C and if SCL then 0x5D
-  if (!mpr.begin(0x5A)) {
-    Serial.println("MPR121 not found, check wiring?");
-    while (1);
-  }
-  Serial.println("MPR121 found!");
+  setupButtons();
 
   tone(piezoPin1,300);
   delay(300);
