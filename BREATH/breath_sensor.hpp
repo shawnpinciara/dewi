@@ -33,3 +33,7 @@ void setupHx(int HX_SCK_PIN, int HX_OUT_PIN) {
   pinMode(HX_SCK_PIN, OUTPUT);
   pinMode(HX_OUT_PIN, INPUT);
 }
+
+void setupBreath() {
+  setupHx(HX_SCK_PIN,HX_OUT_PIN);
+}

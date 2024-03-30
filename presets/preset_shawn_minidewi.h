@@ -6,3 +6,7 @@
 
 //OUT
 #include "../OUT/test/serial_print.hpp"
+
+void setupControls() {}
+
+void updateControls() {}

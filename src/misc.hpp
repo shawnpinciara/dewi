@@ -23,7 +23,7 @@ Serial.println();
 //BUTTONS SCANNING OPTIONS
 
 //MIDI OPTIONS:
-//Only one of these 4 can be defined:
+//Only one of these 4 can be defined:d:\Coding\Arduino\dewi\presets\preset_dewi_micro_mpr121.h
 //#define serial_midi //midi serial or midi usb (if device is midi compliant)
 //#define midi_ble //for midi bluetooth
 //#define usb_midi
