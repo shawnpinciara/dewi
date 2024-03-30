@@ -3,6 +3,7 @@
 
 //OPTIONS:
 #include "presets/preset_dewi_micro_mpr121.h"
+//#include "presets/preset_shawn_minidewi.h"
 
 
 //MODWHEEL
@@ -57,6 +58,7 @@ void setup() {
   Serial1.begin(31250);
 
   setupButtons();
+  setupHx(HX_SCK_PIN,HX_OUT_PIN);
 
   tone(piezoPin1,300);
   delay(300);
