@@ -39,8 +39,9 @@ int bank = 0;
 void setup() {
   
   Serial1.begin(31250);
-  Serial.begin(9600);
+  Serial.begin(115200);
 
+  setupBreath();
   setupButtons();
   setupControls();
 
@@ -51,7 +52,7 @@ void setup() {
 }
 
 void updateBreath() {
-    breath = getBreath(HX_SCK_PIN,HX_OUT_PIN,HX_MODE);
+    breath = getBreath();
     if (breath > threshold_bottom) {
       //lettura valori e manipolazione i bit
       velocity = map(breath,threshold_bottom,threshold_top,40,127);

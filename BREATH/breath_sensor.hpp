@@ -6,7 +6,7 @@ enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
 
 //BREATH READ FUNCTION
-long getBreath(int HX_SCK_PIN, int HX_OUT_PIN, byte HX_MODE) {
+long getBreath() {
   // pulse clock line to start a reading
   for (char i = 0; i < HX_MODE; i++) {
     digitalWrite(HX_SCK_PIN, HIGH);
