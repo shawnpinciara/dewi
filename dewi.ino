@@ -6,7 +6,7 @@
 //#include "presets/preset_shawn_minidewi.h"
 
 
-const int piezoPin1 = 6;
+const int piezoPin1 = 2;
 
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
 const int noteArray[16] = {0,2,11,4,12,9,5,7,1,3,12,5,16,10,6,8};
@@ -14,6 +14,7 @@ const int keyArray[16] =  {0,2,11,4,0,9,5,7,1,3,0,5,16,10,6,8};
 const int octaveArray[16] = {0,1,-1,0,-2,-1,-3,0,0,0,0,0,0,0,0,0}; //missing button is X000, change octave is 0X00, -1 (X) e +1 (Y) octave is 00XY
 int octave = 5;
 
+#define CONTROL_RATE 64 // Hz, powers of 2 are most reliable
 unsigned int velocity = 60;
 unsigned long threshold_bottom = 8100000;
 unsigned long threshold_top = 14000000;
@@ -38,17 +39,19 @@ int bank = 0;
 
 void setup() {
   
-  Serial1.begin(31250);
+  //Serial1.begin(31250);
   Serial.begin(115200);
 
   setupBreath();
   setupButtons();
   setupControls();
+  setupMisc();
 
   tone(piezoPin1,300);
   delay(300);
   noTone(piezoPin1);
   monoMode(0);
+
 }
 
 void updateBreath() {
@@ -91,6 +94,11 @@ void updateBreath() {
 
 //MAIN
 void loop() {
-  updateBreath();
-  updateControls();
+  #ifndef mozzi:
+    updateBreath();
+    updateControls();
+  #endif
+  #ifdef mozzi:
+    audioHook();
+  #endif
 }

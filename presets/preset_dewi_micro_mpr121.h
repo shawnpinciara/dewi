@@ -22,6 +22,7 @@ Encoder encoder(14, 15);
 long encoderPos  = -999;
 int encoderVal = 56;
 
+void setupMisc(){};
 
 void setupControls() {
   pinMode(modWheel, INPUT);
