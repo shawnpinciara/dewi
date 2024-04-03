@@ -94,10 +94,12 @@ void updateBreath() {
 
 //MAIN
 void loop() {
+  
   #ifndef mozzi:
     updateBreath();
     updateControls();
   #endif
+
   #ifdef mozzi:
     audioHook();
   #endif

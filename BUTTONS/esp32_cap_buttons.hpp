@@ -1,5 +1,6 @@
 //Setup buttons
 
+//Options
 const int TOUCH_PINS[4] = {T7,T6,T5,T4}; //btn on pin 27 is nearest to the mouth
 
 

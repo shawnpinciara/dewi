@@ -2,6 +2,11 @@
 //BREATH SENSOR
 const int HX_OUT_PIN = 4;
 const int HX_SCK_PIN = 5;
+
+//Options:
+const int HX_OUT_PIN = 4;
+const int HX_SCK_PIN = 5;
+
 enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
 
@@ -29,11 +34,8 @@ long getBreath() {
   return result;
 }
 
-void setupHx(int HX_SCK_PIN, int HX_OUT_PIN) {
-  pinMode(HX_SCK_PIN, OUTPUT);
-  pinMode(HX_OUT_PIN, INPUT);
-}
 
 void setupBreath() {
-  setupHx(HX_SCK_PIN,HX_OUT_PIN);
+  pinMode(HX_SCK_PIN, OUTPUT);
+  pinMode(HX_OUT_PIN, INPUT);
 }
