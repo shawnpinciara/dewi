@@ -1,13 +1,7 @@
 //Sensor: HX710B
 //BREATH SENSOR
-
-//On arduino micro:
 const int HX_OUT_PIN = 4;
 const int HX_SCK_PIN = 5;
-
-//on ESP32
-//const int HX_OUT_PIN = 2;
-//const int HX_SCK_PIN = 4;
 enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
 
@@ -32,7 +26,6 @@ long getBreath() {
   result += (long)data[2] << 16;
   result += (long)data[1] << 8;
   result += (long)data[0];
-  Serial.println(result);
   return result;
 }
 

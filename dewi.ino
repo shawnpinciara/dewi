@@ -91,13 +91,6 @@ void updateBreath() {
     lastNote = currentNote;
 }
 
-#ifdef mozzi:
-void updateControl() {
-  // put changing controls in here
-  updateBreath();
-  updateControls();
-}
-#endif
 
 //MAIN
 void loop() {
