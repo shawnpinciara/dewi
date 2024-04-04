@@ -3,11 +3,23 @@
 const int HX_OUT_PIN = 4;
 const int HX_SCK_PIN = 5;
 
+//Options:
+
+
 enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
 
+
+
+
+void setup() {
+  pinMode(HX_SCK_PIN, OUTPUT);
+  pinMode(HX_OUT_PIN, INPUT);
+  Serial.begin(115200);
+}
+
 //BREATH READ FUNCTION
-long getBreath() {
+void loop() {
   // pulse clock line to start a reading
   for (char i = 0; i < HX_MODE; i++) {
     digitalWrite(HX_SCK_PIN, HIGH);
@@ -27,11 +39,5 @@ long getBreath() {
   result += (long)data[2] << 16;
   result += (long)data[1] << 8;
   result += (long)data[0];
-  return result;
-}
-
-
-void setupBreath() {
-  pinMode(HX_SCK_PIN, OUTPUT);
-  pinMode(HX_OUT_PIN, INPUT);
+  Serial.println(result) ;
 }

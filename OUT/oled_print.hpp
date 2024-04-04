@@ -22,20 +22,19 @@ void displayNote(byte pitch,byte velocity) {
 }
 
 void noteOn(byte channel,byte pitch, byte velocity) {
-  Serial.println(pitch);
   displayNote(pitch,velocity);
 }
 
 void noteOff(byte channel,byte pitch, byte velocity) {
-  Serial.println(pitch);
+  displayNote(pitch,velocity);
 }
 
 void channelPressure(byte channel, byte note,byte velocity) {
-  Serial.println(note);
+  displayNote(pitch,velocity);
 }
 
 void controlChange(byte channel, byte note,byte velocity) {
-  Serial.println(note);
+  displayNote(pitch,velocity);
 }
 
 void monoMode(int mode) {

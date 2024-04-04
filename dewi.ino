@@ -2,8 +2,8 @@
 #include <Encoder.h>
 
 //OPTIONS:
-#include "presets/preset_dewi_micro_mpr121.h"
-//#include "presets/preset_shawn_minidewi.h"
+//#include "presets/preset_dewi_micro_mpr121.h"
+#include "presets/preset_shawn_minidewi.h"
 
 
 const int piezoPin1 = 2;
@@ -16,7 +16,7 @@ int octave = 5;
 
 #define CONTROL_RATE 64 // Hz, powers of 2 are most reliable
 unsigned int velocity = 60;
-unsigned long threshold_bottom = 8100000;
+unsigned long threshold_bottom = 8750000;
 unsigned long threshold_top = 14000000;
 unsigned long breath = 0; //16689194 base, 8595203 piano,10305762 forte (breath sensor data)
 const uint16_t mask_key = 0b0000000011110000;
@@ -54,6 +54,21 @@ void setup() {
 
 }
 
+#ifdef mozzi:
+const int onTime=200; // in ms
+bool timeDebounce = true;
+unsigned long startTime = millis();
+void updateControl(){
+  if(timeDebounce && millis()>startTime+onTime) {
+    timeDebounce = false;
+    startTime = millis();
+    //Serial.print("hey");
+    updateBreath();
+  } else if (millis()<startTime+onTime) {
+    timeDebounce = true;
+  }
+}
+#endif
 void updateBreath() {
     breath = getBreath();
     if (breath > threshold_bottom) {
