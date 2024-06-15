@@ -4,7 +4,6 @@
 #include "presets/preset_dewi_micro_mpr121.h"
 //#include "presets/preset_shawn_minidewi.h"
 
-
 const int piezoPin1 = 2;
 
 //binary no midi note map es: binary:0001 -> decimal: 1 -->note: D (1 in midi value)
@@ -15,7 +14,7 @@ int octave = 5;
 
 #define CONTROL_RATE 64 // Hz, powers of 2 are most reliable
 unsigned int velocity = 60;
-unsigned long threshold_bottom = 9736143; 
+unsigned long threshold_bottom = 9736143; //base: 8067761
 unsigned long threshold_top = 14000000;
 unsigned long breath = 0; //16689194 base, 8595203 piano,10305762 forte (breath sensor data)
 const uint16_t mask_key = 0b0000000011110000;
@@ -53,24 +52,25 @@ void setup() {
 
 }
 
-#ifdef mozzi:
-const int onTime=200; // in ms
-bool timeDebounce = true;
-unsigned long startTime =0;
-void updateControl(){
-  if(timeDebounce && millis()>startTime+onTime) {
-    timeDebounce = false;
-    startTime = millis();
-    //Serial.println(startTime);
-    updateBreath();
-  } 
+// #ifdef mozzi:
+// const int onTime=200; // in ms
+// bool timeDebounce = true;
+// unsigned long startTime =0;
+// void updateControl(){
+//   if(timeDebounce && millis()>startTime+onTime) {
+//     timeDebounce = false;
+//     startTime = millis();
+//     //Serial.println(startTime);
+//     updateBreath();
+//   } 
   
-  if (millis()<startTime+onTime) {
-    timeDebounce = true;
-    //Serial.println(startTime);
-  }
-}
-#endif
+//   if (millis()<startTime+onTime) {
+//     timeDebounce = true;
+//     //Serial.println(startTime);
+//   }
+// }
+// #endif
+
 void updateBreath() {
     breath = getBreath();
     Serial.println(breath);
@@ -114,12 +114,12 @@ void updateBreath() {
 //MAIN
 void loop() {
   
-  #ifndef mozzi:
-    updateBreath();
-    updateControls();
-  #endif
+  // #ifndef mozzi:
+  updateBreath();
+  updateControls();
+  // #endif
 
-  #ifdef mozzi:
-    audioHook();
-  #endif
+  // #ifdef mozzi:
+  //   audioHook();
+  // #endif
 }

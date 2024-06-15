@@ -7,13 +7,16 @@
 //OUT
 // #include "../OUT/midi/midi_functions_serial.hpp"
 #include "../OUT/serial_print.hpp"
-//MODWHEEL
+
+
 #define modWheel A0
+#define pot A1
+
+//MODWHEEL
 uint16_t modwheelVal = 999;
 uint16_t modwheelValNew;
 
 //POT
-#define pot A1
 int potVal = 999;
 int potValNew;
 
