@@ -49,6 +49,7 @@ void setup() {
   delay(300);
   noTone(piezoPin1);
   monoMode(0);
+  noteOn(0,60, 100);
 
 }
 
@@ -73,38 +74,34 @@ void setup() {
 
 void updateBreath() {
     breath = getBreath();
-    Serial.println(breath);
     if (breath > threshold_bottom) {
-      
-      //lettura valori e manipolazione i bit
+      mpr121 = getButtonsState();
       velocity = map(breath,threshold_bottom,threshold_top,40,127);
       lastKey = currentKey;
-      mpr121 = getButtonsState();
       currentKey = (mpr121 & mask_key)>>4;
+
       if (currentKey == 0) {currentKey = lastKey;}
       currentOctave = (mpr121 & mask_octave)>>8; 
       //cc = (mpr121 & mask_cc) >>11;
       currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
-      //gestione del fiato vera e propria
-      if (breathAttack) { //all'inizio della soffiata (va una volta sola)
-        breathAttack=false; //cambio lo stato cosi non ci entro piu in questo if
-        breathRelease = true; //accendo la possibilià di entrare nell'if di quando interromperò il fiato
+      if (breathAttack) { 
+        breathAttack=false; breathRelease = true;
         velocity = map(breath,threshold_bottom,threshold_top,40,127);
         noteOn(0,currentNote, velocity);
-      } else { //durante la soffiata (si ripete continuamente)
-        if (currentNote != lastNote) { //se il valore letto da sensore è diverso da quello letto in precedenza          
-          noteOff(0,lastNote,velocity);    //fai smettere di suonare la nota precedente (perchè siamo in monofonia)
-          lastNote = currentNote; //aggiorna valore di nota precedente
-          noteOn(0,currentNote, velocity);  //inizia a suonare la nota premuta      
+        Serial.println("note on");
+      } else { 
+        if (currentNote != lastNote) {          
+          noteOff(0,lastNote,velocity);    
+          lastNote = currentNote;
+          noteOn(0,currentNote, velocity);  
         } else {
-          channelPressure(0, currentNote, velocity);
+          PolyphonicKeyPressure(0, currentNote, velocity);
         }
       }
     } else { 
-      if (breathRelease==true) { //funziona una volta sola solamente quando rilascio il fiato dopo aver soffiato
-        breathAttack=true;
-        breathRelease=false;
-        noteOff(0,lastNote,velocity); //fai smettere di suonare l'ultima nota suonata
+      if (breathRelease==true) { 
+        breathAttack=true; breathRelease=false;
+        noteOff(0,lastNote,velocity); 
       }  
     }
     lastNote = currentNote;

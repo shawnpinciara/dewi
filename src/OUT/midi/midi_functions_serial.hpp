@@ -12,8 +12,14 @@ void noteOff(byte channel,byte pitch, byte velocity) {
   Serial1.write(velocity);
 }
 
-void channelPressure(byte channel, byte note,byte velocity) {
+void PolyphonicKeyPressure(byte channel, byte note,byte velocity) {
   Serial1.write(0b10100000 | channel);
+  Serial1.write(note);
+  Serial1.write(velocity);
+}
+
+void channelPressure(byte channel, byte note,byte velocity) {
+  Serial1.write(0b11010000 | channel);
   Serial1.write(note);
   Serial1.write(velocity);
 }

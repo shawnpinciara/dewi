@@ -5,8 +5,9 @@
 #include "../BUTTONS/mpr121.hpp"
 
 //OUT
-// #include "../OUT/midi/midi_functions_serial.hpp"
-#include "../OUT/serial_print.hpp"
+//#include "../OUT/midi/midi_functions_serial.hpp"
+#include "../OUT/midi/midi_functions_usb.hpp"
+//#include "../OUT/serial_print.hpp"
 
 
 #define modWheel A0

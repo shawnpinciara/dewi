@@ -14,8 +14,16 @@ void noteOff(byte channel,byte pitch, byte velocity) {
   Serial.println();
 }
 
+void PolyphonicKeyPressure(byte channel, byte pitch,byte velocity) {
+  Serial.print("PolyphonicKeyPressure: ");
+  Serial.print("Channel " + String(channel));
+  Serial.print(" , Pitch " + String(pitch));
+  Serial.print(" , Velocity " + String(velocity));
+  Serial.println();
+}
+
 void channelPressure(byte channel, byte pitch,byte velocity) {
-  Serial.print("CP: ");
+  Serial.print("channelPressure: ");
   Serial.print("Channel " + String(channel));
   Serial.print(" , Pitch " + String(pitch));
   Serial.print(" , Velocity " + String(velocity));

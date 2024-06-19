@@ -7,24 +7,28 @@
 
 
 
-//TODO: the order of bytes is wrong, DONT USE ANY OF THIS NOW
+//https://www.arduino.cc/reference/en/libraries/midiusb/
 
-
-
+#include "MIDIUSB.h"
 
 void noteOn(byte channel,byte pitch, byte velocity) {
   midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
   MidiUSB.sendMIDI(noteOn);
-  MIDI.sendNoteOn(currentNote, velocity, 1);  // Send a MIDI note
+  //MIDI.sendNoteOn(pitch, velocity, 1);  // Send a MIDI note
 }
 
 void noteOff(byte channel,byte pitch, byte velocity) {
   midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
   MidiUSB.sendMIDI(noteOff);
-  MIDI.sendNoteOff(lastNote,velocity,1);
+  //MIDI.sendNoteOff(pitch,velocity,1);
+}
+
+void PolyphonicKeyPressure(byte channel, byte note,byte velocity) {
+  midiEventPacket_t event = {0b10100000 | channel, note, velocity};
+  MidiUSB.sendMIDI(event);
 }
 void channelPressure(byte channel, byte note,byte velocity) {
-  midiEventPacket_t event = {0x0D, 0b11010001, velocity};
+  midiEventPacket_t event = {0b11010000 | channel, note, velocity};
   MidiUSB.sendMIDI(event);
 }
 
@@ -39,11 +43,11 @@ void allNotesOff(byte channel) {
 }
 
 void allSoundsOff(byte channel) {
-  midiEventPacket_t event = {0x78, 0x00 | channel};
+  midiEventPacket_t event = {0x78, 0b00000000 | channel};
   MidiUSB.sendMIDI(event);
 }
 
 void monoMode(byte channel) {
-  midiEventPacket_t event = {0x01111110, 0x01 | channel};
+  midiEventPacket_t event = {0b01111110, 0b00000001 | channel};
   MidiUSB.sendMIDI(event);
 }
