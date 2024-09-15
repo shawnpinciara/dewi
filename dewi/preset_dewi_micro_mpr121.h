@@ -1,13 +1,13 @@
 //BREATH
-#include "../BREATH/breath_sensor.hpp"
+#include "./breath_sensor.hpp"
 
 //BUTTONS
-#include "../BUTTONS/mpr121.hpp"
+#include "./mpr121.hpp"
 
 //OUT
 //#include "../OUT/midi/midi_functions_serial.hpp"
-#include "../OUT/midi/midi_functions_usb.hpp"
-//#include "../OUT/serial_print.hpp"
+// #include "./midi_functions_usb.hpp"
+#include "./serial_print.hpp"
 
 
 #define modWheel A0

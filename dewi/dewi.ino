@@ -1,7 +1,7 @@
 #include <Wire.h>
 
 //OPTIONS:
-#include "presets/preset_dewi_micro_mpr121.h"
+#include "./preset_dewi_micro_mpr121.h"
 //#include "presets/preset_shawn_minidewi.h"
 
 const int piezoPin1 = 2;
@@ -14,7 +14,7 @@ int octave = 5;
 
 #define CONTROL_RATE 64 // Hz, powers of 2 are most reliable
 unsigned int velocity = 60;
-unsigned long threshold_bottom = 9736143; //base: 8067761
+unsigned long threshold_bottom = 8736143; //base: 8067761
 unsigned long threshold_top = 14000000;
 unsigned long breath = 0; //16689194 base, 8595203 piano,10305762 forte (breath sensor data)
 const uint16_t mask_key = 0b0000000011110000;
@@ -37,7 +37,7 @@ int bank = 0;
 
 void setup() {
   
-  //Serial1.begin(31250);
+
   Serial.begin(115200);
 
   setupBreath();
@@ -74,6 +74,8 @@ void setup() {
 
 void updateBreath() {
     breath = getBreath();
+    Serial.println("AAAAAA");
+    Serial.println(breath);
     if (breath > threshold_bottom) {
       mpr121 = getButtonsState();
       velocity = map(breath,threshold_bottom,threshold_top,40,127);

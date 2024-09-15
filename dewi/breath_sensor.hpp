@@ -2,8 +2,8 @@
 //BREATH SENSOR
 //https://swharden.com/blog/2022-11-14-hx710b-arduino/
 
-const int HX_OUT_PIN = 4;
-const int HX_SCK_PIN = 5;
+const int HX_OUT_PIN = 20;
+const int HX_SCK_PIN = 19;
 
 enum HX_MODE { NONE, DIFF_10Hz, TEMP_40Hz, DIFF_40Hz};
 const byte HX_MODE = DIFF_40Hz;
