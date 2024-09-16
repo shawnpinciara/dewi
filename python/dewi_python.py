@@ -132,7 +132,7 @@ lastMpr121 = 0
 noteToSend = 0
 lastNote = 3
 currentKey = 0
-lastKey = 1
+lastKey = 0
 currentOctave = 0
 lastOctave = 0
 mpr121 = 0
@@ -148,12 +148,6 @@ def updateBreath():
       mpr121 = getButtonsState()
       currentMpr121 = mpr121
                                          #key handling
-      #lastKey = currentKey
-      currentKey = (mpr121 & mask_key)>>4
-      #if (currentKey == 0): currentKey = lastKey
-      currentOctave = (mpr121 & mask_octave)>>8
-      #cc = (mpr121 & mask_cc) >>11
-      currentNote = mpr121 & mask_note
       
       if (currentMpr121 != lastMpr121):
         clearShell()
@@ -162,16 +156,25 @@ def updateBreath():
         t0 = millis()
         while (millis() - t0)<wait: ##busywaiting##
             mpr121 = getButtonsState()
+        
         currentNote = mpr121 & mask_note
+        #lastKey = currentKey
+        currentKey = (mpr121 & mask_key)>>4
+        if (currentKey == 0): 
+            currentKey = lastKey
+        currentOctave = (mpr121 & mask_octave)>>8
+        #cc = (mpr121 & mask_cc) >>11
         velocity = mapp(breath,threshold_bottom,threshold_top,40,127)
         noteOffToSend = ((octave+octaveArray[currentOctave])*12)+(noteArray[lastNote]+keyArray[currentKey])
         noteOff(0,noteOffToSend,velocity)
         lastNote = currentNote
         lastMpr121 = currentMpr121
+        lastKey = currentKey
         noteOnToSend = ((octave+octaveArray[currentOctave])*12)+(noteArray[currentNote]+keyArray[currentKey])
         noteOn(0,noteOnToSend, velocity)
         print("")
-        print(bin(mpr121)[2:].zfill(16))
+        print("Octave: " +bin(currentOctave)[2:].zfill(4)+ " Note: " +bin(currentNote)[2:].zfill(4)+" Key: " +bin(currentKey)[2:].zfill(4))
+        #print(bin(mpr121)[2:].zfill(16))
         print("")
         print("###### Press Q to quit #####")
       else:
