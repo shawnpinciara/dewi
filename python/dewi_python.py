@@ -148,7 +148,6 @@ def updateBreath():
       mpr121 = getButtonsState()
       currentMpr121 = mpr121
                                          #key handling
-      
       if (currentMpr121 != lastMpr121):
         clearShell()
                                             # wait for X millis and get button state
