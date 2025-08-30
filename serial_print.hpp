@@ -30,12 +30,12 @@ void channelPressure(byte channel, byte pitch,byte velocity) {
   Serial.println();
 }
 
-void controlChange(byte channel, byte pitch,byte velocity) {
-  // Serial.print("CC: ");
-  // Serial.print("Channel " + String(channel));
-  // Serial.print(" , Pitch " + String(pitch));
-  // Serial.print(" , Velocity " + String(velocity));
-  // Serial.println();
+void controlChange(byte channel,byte controller_number, byte value) {
+  Serial.print("CC: ");
+  Serial.print("Channel " + String(channel));
+  Serial.print(" , CC " + String(controller_number));
+  Serial.print(" , Value " + String(value));
+  Serial.println();
 }
 
 void monoMode(int mode) {
