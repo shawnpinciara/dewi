@@ -210,9 +210,10 @@ void setup() {
   delay(100);
 
   Serial.println("Initial CDC/CDT values:");
-  dump_regs();
+  dump_regs(); //TODO: forse bisogna rimuovere questo
 
   mpr.setAutoconfig(true);
+  //mpr.setThreshholds(0x10, 0x0C); //10 -11 TODO: bisogna mettere valori che permettono letture stabili
 
   Serial.println("After autoconfig CDC/CDT values:");
   dump_regs();
