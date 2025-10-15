@@ -8,16 +8,17 @@
 
 
 /////////////////////// MAPPING
-int vibrato_cc = 41;
+int vibrato_cc = 1; //41
 int vibrato_min = 0;
 int vibrato_max = 120;
 
-int cutoff_cc = 43;
+int cutoff_cc = 74; //43
 int cutoff_min = 50;
 int cutoff_max =  127;
 
-
-
+int modwheel_cc = 74; //43
+int modwheel_min = 50;
+int modwheel_max =  127;
 
 //////////////////////
 
@@ -45,7 +46,7 @@ int octave = 5;
 #define CONTROL_RATE 64 // Hz, powers of 2 are most reliable
 unsigned int velocity = 60;
 unsigned long threshold_bottom = 8736143; //base: 8067761
-unsigned long threshold_top = 10400000;
+unsigned long threshold_top = 10000000;
 unsigned long breath = 0; //16689194 base, 8595203 piano,10305762 forte (breath sensor data)
 const uint16_t mask_key = 0b0000000011110000;
 const uint16_t mask_note = 0b0000000000001111;
@@ -202,7 +203,7 @@ void setup() {
   }
 
   Serial.println("cap.begin..");
-  if (!mpr.begin(0x5A, &Wire)) {
+  if (!mpr.begin(0x5A, &Wire,10,8,true)) {
     Serial.println("MPR121 not found, check wiring?");
     while (1);
   }
@@ -210,9 +211,9 @@ void setup() {
   delay(100);
 
   Serial.println("Initial CDC/CDT values:");
-  dump_regs(); //TODO: forse bisogna rimuovere questo
+  //dump_regs(); //TODO: forse bisogna rimuovere questo
 
-  mpr.setAutoconfig(true);
+  //mpr.setAutoconfig(true);
   //mpr.setThreshholds(0x10, 0x0C); //10 -11 TODO: bisogna mettere valori che permettono letture stabili
 
   Serial.println("After autoconfig CDC/CDT values:");
@@ -265,7 +266,7 @@ void updateDewi() {
 
   breath = getBreath();
   mpr121 = getButtonsState();
-  printBinary(mpr121);
+  
 
   if (breath > threshold_bottom && breath < threshold_top) {
     mpr121 = getButtonsState();
@@ -277,8 +278,6 @@ void updateDewi() {
     }
 
     currentOctave = (mpr121 & mask_octave)>>8; 
-
-
     currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
     // int t0 = millis();
 
@@ -290,14 +289,16 @@ void updateDewi() {
 
     if (breathAttack) { 
       breathAttack=false; breathRelease = true;
-      velocity = map(breath,threshold_bottom,threshold_top,40,127);
       int t0 = millis();
       while (millis()-t0 < 15) {
         mpr121 = getButtonsState();
+        breath = getBreath();
       }
+      velocity = map(breath,threshold_bottom,threshold_top,1,127);
       currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
       MIDI.sendNoteOn(currentNote,velocity,channel);
-      Serial.println("note on");
+      Serial.print("note on with vel: ");
+      Serial.println(velocity);
     } else { 
       if (currentNote != lastNote) {          
         //MIDI.sendNoteOff(lastNote,velocity,channel);  
@@ -314,16 +315,21 @@ void updateDewi() {
     cutoff = constrain(map(breath,threshold_bottom,threshold_top,cutoff_min,cutoff_max),cutoff_min,cutoff_max);
     MIDI.sendControlChange(cutoff_cc,cutoff,channel);
     MIDI.sendControlChange(vibrato_cc,vibrato,channel);
-    //modwheelVal = constrain(analogRead(modWheelPin),350,650);
-    //modwheelVal = map(modwheelVal,650,350,MIDI_PITCHBEND_MIN,MIDI_PITCHBEND_MAX);
+    modwheelVal = constrain(analogRead(modWheelPin),350,650);
+    modwheelVal = map(modwheelVal,650,350,MIDI_PITCHBEND_MIN,MIDI_PITCHBEND_MAX);
     
     //MIDI.sendPitchBend((int)modwheelVal,channel);
-    // Serial.print("modwheel ");
-    // Serial.print(modwheelVal);
-    // Serial.print(" cutoff ");
-    // Serial.print(cutoff);
-    // Serial.print(" vibrato ");
-    // Serial.println(vibrato);
+    Serial.print("modwheel ");
+    Serial.print(modwheelVal);
+    Serial.print(" ,cutoff ");
+    Serial.print(cutoff);
+    Serial.print(" ,vibrato ");
+    Serial.print(vibrato);
+    Serial.print(" ,breath ");
+    Serial.print(breath);
+    Serial.print(" , buttons: ");
+    printBinary(mpr121);
+
   } else { 
     if (breathRelease==true) { 
       breathAttack=true; breathRelease=false;
