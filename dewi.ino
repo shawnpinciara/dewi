@@ -2,6 +2,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h> //da installare
 #include "Adafruit_MPR121.h" //da installare
+#include <Adafruit_NeoPixel.h>
 #include <utility/imumaths.h>
 #include <MIDI.h>
 
@@ -22,8 +23,19 @@ int modwheel_max =  127;
 
 //////////////////////
 
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
+#define MIDI_SERIAL
+
+#ifdef MIDI_SERIAL
+  MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI); //midi serial
+#else
+  MIDI_CREATE_DEFAULT_INSTANCE(); //midi usb
+#endif
 const int channel = 1;
+
+// Which pin on the Arduino is connected to the NeoPixels?
+#define PIN        6 // On Trinket or Gemma, suggest changing this to 1
+#define NUMPIXELS 10 // Popular NeoPixel ring size
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB);
 
 #ifndef _BV
 #define _BV(bit) (1 << (bit)) 
@@ -45,7 +57,8 @@ int octave = 5;
 
 #define CONTROL_RATE 64 // Hz, powers of 2 are most reliable
 unsigned int velocity = 60;
-unsigned long threshold_bottom = 8736143; //base: 8067761
+unsigned long threshold_bottom = 8700000; //base: 8067761
+unsigned long hysteresis = 10500;
 unsigned long threshold_top = 10000000;
 unsigned long breath = 0; //16689194 base, 8595203 piano,10305762 forte (breath sensor data)
 const uint16_t mask_key = 0b0000000011110000;
@@ -62,6 +75,7 @@ uint16_t lastOctave = 0;
 uint16_t mpr121 = 0;
 bool breathAttack = true;
 bool breathRelease = false;
+bool canSendNoteOnWhileBreathing = false;
 int cc = 0;
 int cc_debounce = 1;
 int bank = 0;
@@ -188,65 +202,36 @@ void allNotesOFF() {
     MIDI.sendNoteOff(i,velocity,channel); 
   }
 }
-void setup() {
-  Serial.begin(115200);
 
-  MIDI.begin();
-
-  pinMode(modWheelPin, INPUT);
-  pinMode(HX_SCK_PIN, OUTPUT);
-  pinMode(HX_OUT_PIN, INPUT);
-
-  //MPR121 setup
-  while (!Serial1) { // needed to keep leonardo/micro from starting too fast!
-    delay(10);
-  }
-
-  Serial.println("cap.begin..");
-  if (!mpr.begin(0x5A, &Wire,10,8,true)) {
-    Serial.println("MPR121 not found, check wiring?");
-    while (1);
-  }
-  Serial.println("MPR121 found!");
-  delay(100);
-
-  Serial.println("Initial CDC/CDT values:");
-  //dump_regs(); //TODO: forse bisogna rimuovere questo
-
-  //mpr.setAutoconfig(true);
-  //mpr.setThreshholds(0x10, 0x0C); //10 -11 TODO: bisogna mettere valori che permettono letture stabili
-
-  Serial.println("After autoconfig CDC/CDT values:");
-  dump_regs();
-
-
-
-  Serial.println("Orientation Sensor Test"); Serial.println("");
-  if (!bno.begin()) {
-    /* There was a problem detecting the BNO055 ... check your connections */
-    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-    while (1);
-  }
-
-  
-  monoMode(channel);
-
-
-  delay(1000);
-  Serial.println("Starting the DEWI");
-  monoMode(channel);
-  allNotesOFF();
-  breath = 0;
-
-  for (int i=0; i<10; i++) {
+void setBreathThreshold() {
+  int oldBreath = getBreath();
+  for (int i=0;i<20;i++) {
     breath = getBreath();
+    oldBreath = (oldBreath+breath)/2;
   }
-
-  tone(piezoPin1,300);
-  delay(300);
-  noTone(piezoPin1);
-
+  threshold_bottom = oldBreath;
 }
+
+const int FILTER_SIZE = 5; // Numero di campioni da mediare
+int breath_samples[FILTER_SIZE];
+int sample_index = 0;
+// Variabile per la lettura filtrata
+int filtered_breath = 0; 
+
+int getFilteredBreath(int new_sample) {
+    // Aggiorna il buffer
+    breath_samples[sample_index] = new_sample;
+    sample_index = (sample_index + 1) % FILTER_SIZE;
+    
+    // Calcola la media
+    long sum = 0;
+    for (int i = 0; i < FILTER_SIZE; i++) {
+        sum += breath_samples[i];
+    }
+    filtered_breath = (int)(sum / FILTER_SIZE);
+    return filtered_breath;
+}
+
 void printBinary(int number) {
   // Itera da 31 (il bit più significativo di un int a 32 bit) fino a 0.
   for (int i = 16; i >= 0; i--) {
@@ -261,152 +246,63 @@ void printBinary(int number) {
   Serial.println(); // Aggiunge un ritorno a capo alla fine
 }
 
+int mapExponentialVolume(int breath_val, int breath_min, int breath_max) {
+    // 1. Clampa il valore (assicura che sia nel range valido)
+    int clamped_val = constrain(breath_val, breath_min, breath_max);
 
-void updateDewi() {
-
-  breath = getBreath();
-  mpr121 = getButtonsState();
-  
-
-  if (breath > threshold_bottom && breath < threshold_top) {
-    mpr121 = getButtonsState();
-    velocity = map(breath,threshold_bottom,threshold_top,40,127);
-    currentKey = (mpr121 & mask_key)>>4;
-
-    if (currentKey == 0) {
-      currentKey = lastKey;
-    }
-
-    currentOctave = (mpr121 & mask_octave)>>8; 
-    currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
-    // int t0 = millis();
-
-    // while ((millis() - t0) < 20) {
-    //     // busy waiting
-    //     mpr121 = getButtonsState();
-    // }
+    // Calcola la dimensione totale dell'intervallo.
+    int breath_range = breath_max - breath_min;
     
-
-    if (breathAttack) { 
-      breathAttack=false; breathRelease = true;
-      int t0 = millis();
-      while (millis()-t0 < 15) {
-        mpr121 = getButtonsState();
-        breath = getBreath();
-      }
-      velocity = map(breath,threshold_bottom,threshold_top,1,127);
-      currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
-      MIDI.sendNoteOn(currentNote,velocity,channel);
-      Serial.print("note on with vel: ");
-      Serial.println(velocity);
-    } else { 
-      if (currentNote != lastNote) {          
-        //MIDI.sendNoteOff(lastNote,velocity,channel);  
-        lastNote = currentNote;
-        int t0 = millis();
-        while (millis()-t0 < 15) {
-          mpr121 = getButtonsState();
-        }
-        currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
-        MIDI.sendNoteOn(currentNote,velocity,channel);
-        Serial.println("note on while breathing");
-      }
+    // Evita la divisione per zero nel caso di breath_min == breath_max
+    if (breath_range == 0) {
+        return breath_min; 
     }
-    cutoff = constrain(map(breath,threshold_bottom,threshold_top,cutoff_min,cutoff_max),cutoff_min,cutoff_max);
-    MIDI.sendControlChange(cutoff_cc,cutoff,channel);
-    MIDI.sendControlChange(vibrato_cc,vibrato,channel);
-    modwheelVal = constrain(analogRead(modWheelPin),350,650);
-    modwheelVal = map(modwheelVal,650,350,MIDI_PITCHBEND_MIN,MIDI_PITCHBEND_MAX);
+
+    // 2. Normalizza l'input: Mappa il fiato in un range da 0.0 a 1.0.
+    // (Questo rappresenta la percentuale di fiato tra min e max).
+    float normalized = (float)(clamped_val - breath_min) / (float)breath_range;
+
+    // 3. Applica la Curva Esponenziale (Quadrato):
+    // La curva trasforma il valore 0-1.0 in modo esponenziale.
+    // Valori bassi (vicini a 0) diventano molto più piccoli (controllo fine).
+    float curve_val = normalized * normalized; 
     
-    //MIDI.sendPitchBend((int)modwheelVal,channel);
-    Serial.print("modwheel ");
-    Serial.print(modwheelVal);
-    Serial.print(" ,cutoff ");
-    Serial.print(cutoff);
-    Serial.print(" ,vibrato ");
-    Serial.print(vibrato);
-    Serial.print(" ,breath ");
-    Serial.print(breath);
-    Serial.print(" , buttons: ");
-    printBinary(mpr121);
+    // Se vuoi una curva ancora più aggressiva:
+    // float curve_val = normalized * normalized * normalized;
 
-  } else { 
-    if (breathRelease==true) { 
-      breathAttack=true; breathRelease=false;
-      MIDI.sendNoteOff(lastNote,velocity,channel);  
-      Serial.println("note off");
-      allNotesOFF();
+    // 4. Scala il valore curvo [0.0, 1.0] nuovamente all'intervallo di output [breath_min, breath_max].
+    // L'output deve partire da breath_min e estendersi per 'breath_range'.
+    int output_value = (int)(curve_val * (float)breath_range) + breath_min;
+
+    return output_value;
+}
+
+#include <math.h> // Necessario per expf()
+int mapSigmoidVolume(int breath_val, int breath_min, int breath_max) {
+    // 1. Pre-calcolo e Gestione del Caso Limite
+    int breath_range = breath_max - breath_min;
+    if (breath_range == 0) {
+        return breath_min; 
     }
 
-  }
+    // 2. Normalizzazione dell'Input: Mappa il fiato nell'intervallo [0.0, 1.0].
+    float normalized = (float)constrain(breath_val, breath_min, breath_max);
+    normalized = (normalized - breath_min) / (float)breath_range; 
 
-  lastKey = currentKey;
-  
+    // 3. Traslazione e Scala per la Funzione Sigmoide Standard:
+    // Mappa l'intervallo [0, 1] a [-6, 6] (dominio standard della curva a S).
+    float x = (normalized * 12.0) - 6.0; 
+
+    // 4. Applica la Curva Sigmoide (Logistica): f(x) = 1 / (1 + e^-x)
+    // L'output 'sigmoid_output' è un valore curvo tra 0.0 e 1.0.
+    float sigmoid_output = 1.0 / (1.0 + expf(-x));
+
+    // 5. Riscalatura dell'Output: Mappa il valore curvo [0.0, 1.0] 
+    // nuovamente all'intervallo di output [breath_min, breath_max].
+    int output_value = (int)(sigmoid_output * (float)breath_range) + breath_min;
+
+    return output_value;
 }
-void updateDewiPython() {
-    breath = getBreath();
-    // Serial.print("Breath: ");
-    // Serial.println(breath);
-    mpr121 = getButtonsState();
-    // Serial.print("Mpr121: ");
-    // Serial.println(mpr121);
-    if (breath > threshold_bottom) {
-        mpr121 = getButtonsState();
-        
-        // key handling
-        lastKey = currentKey;
-        currentKey = (mpr121 & mask_key) >> 4;
-        if (currentKey == 0) {
-            currentKey = lastKey;
-        }
-        
-        currentOctave = (mpr121 & mask_octave) >> 8;
-        currentNote = mpr121 & mask_note;
-
-        if (currentNote != lastNote) {
-            int t0 = millis();
-
-            while ((millis() - t0) < 20) {
-                // busy waiting
-                mpr121 = getButtonsState();
-            }
-            
-            currentNote = mpr121 & mask_note;
-            velocity = round(map(breath, threshold_bottom, threshold_top, 40, 127));
-
-            int noteOffToSend = ((octave + octaveArray[currentOctave]) * 12) + (noteArray[lastNote] + keyArray[currentKey]);
-            MIDI.sendNoteOff(noteOffToSend,velocity,channel);
-            //noteOff(0, noteOffToSend, velocity);
-            
-            lastNote = currentNote;
-            int noteOnToSend = ((octave + octaveArray[currentOctave]) * 12) + (noteArray[currentNote] + keyArray[currentKey]);
-            MIDI.sendNoteOn(noteOnToSend,velocity,channel);
-            //noteOn(0, noteOnToSend, velocity);
-        } else {
-            // noteToSend = ((octave+octaveArray[currentOctave])*12)+(noteArray[currentNote]+keyArray[currentKey]);
-            PolyphonicKeyPressure(0, currentNote, velocity);
-        }
-    } else {
-        allNotesOff(channel);
-    }
-}
-
-//MAIN
-void loop() {
-  updateDewi();
-
-  //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
-  sensors_event_t orientationData; //, angVelocityData , linearAccelData, magnetometerData, accelerometerData, gravityData
-  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-  handleEvent(&orientationData);
-
-  uint8_t system, gyro, accel, mag = 0;
-  bno.getCalibration(&system, &gyro, &accel, &mag);
-
-
-}
-
-
 void handleEvent(sensors_event_t* event) {
   
   // bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
@@ -482,3 +378,190 @@ void handleEvent(sensors_event_t* event) {
   // Serial.print(F("temperature: "));
   // Serial.println(boardTemp);
 }
+
+
+void setup() {
+  Serial.begin(115200);
+
+  MIDI.begin();
+
+  pinMode(modWheelPin, INPUT);
+  pinMode(HX_SCK_PIN, OUTPUT);
+  pinMode(HX_OUT_PIN, INPUT);
+
+  //MPR121 setup
+  while (!Serial1) { // needed to keep leonardo/micro from starting too fast!
+    delay(10);
+  }
+  Serial.println("cap.begin..");
+  if (!mpr.begin(0x5A, &Wire,10,8,true)) {
+    Serial.println("MPR121 not found, check wiring?");
+    while (1);
+  }
+  Serial.println("MPR121 found!");
+  delay(100);
+  Serial.println("Initial CDC/CDT values:");
+  //dump_regs(); //TODO: forse bisogna rimuovere questo
+
+  //mpr.setAutoconfig(true);
+  //mpr.setThreshholds(0x10, 0x0C); //10 -11 TODO: bisogna mettere valori che permettono letture stabili
+  Serial.println("After autoconfig CDC/CDT values:");
+  dump_regs();
+  Serial.println("Orientation Sensor Test"); Serial.println("");
+  if (!bno.begin()) {
+    /* There was a problem detecting the BNO055 ... check your connections */
+    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    while (1);
+  }
+  monoMode(channel);
+  delay(1000);
+  Serial.println("Starting the DEWI");
+  monoMode(channel);
+  allNotesOFF();
+  breath = 0;
+
+  for (int i=0; i<10; i++) {
+    breath = getBreath();
+  }
+
+  tone(piezoPin1,300);
+  delay(300);
+  noTone(piezoPin1);
+
+  pixels.begin();
+  pixels.setBrightness(60);
+  pixels.fill(100);
+  pixels.show();
+  delay(400);
+  pixels.fill(0);
+  pixels.show();
+
+  setBreathThreshold(); //set threshold
+
+}
+
+
+void updateDewi() {
+
+  breath = getFilteredBreath(getBreath());
+  mpr121 = getButtonsState();
+  
+  // Serial.print("Breath: ");
+  // Serial.print(breath);
+  // Serial.print(", delta: ");
+  // Serial.println(abs(breath_samples[FILTER_SIZE-1]-breath_samples[0]));
+  int delta = abs(breath_samples[FILTER_SIZE-1]-breath_samples[0]); //inclinazione della curva a 5 sample di distanza
+  
+  if (breath > threshold_bottom + hysteresis && breath < threshold_top) {
+    mpr121 = getButtonsState();
+    velocity = map(mapExponentialVolume(breath,threshold_bottom,threshold_top),threshold_bottom,threshold_top,40,127);
+    currentKey = (mpr121 & mask_key)>>4;
+
+    if (currentKey == 0) {
+      currentKey = lastKey;
+    }
+    //color pixels as key pressed
+    for (int i=0;i<4;i++) {
+        int i_map = 1 << i;
+        int brightness = ((currentKey & i_map) >> i) * 100; 
+        pixels.setPixelColor(3-i, pixels.Color(0, 0, brightness));
+        // Serial.print("keys: ");
+        // Serial.print((currentKey & i_map) >> i);
+    }
+    //Serial.println();
+    pixels.show();
+
+    currentOctave = (mpr121 & mask_octave)>>8; 
+    currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
+    // int t0 = millis();
+    // while ((millis() - t0) < 20) {
+    //     // busy waiting
+    //     mpr121 = getButtonsState();
+    // }
+    
+
+    if (breathAttack && delta>2000) { 
+      breathAttack=false; breathRelease = true; canSendNoteOnWhileBreathing=true;
+      int t0 = millis();
+      while (millis()-t0 < 15) {
+        mpr121 = getButtonsState();
+        breath = getBreath();
+      }
+      velocity = constrain(map(breath,threshold_bottom,threshold_top,1,127),0,127);
+      currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
+      if(velocity!=0) {
+        MIDI.sendNoteOn(currentNote,velocity,channel);
+        Serial.print("note on with vel: ");
+        Serial.println(velocity);
+      }
+    } else { 
+      if (currentNote != lastNote && canSendNoteOnWhileBreathing) {          
+        //MIDI.sendNoteOff(lastNote,velocity,channel);  
+        lastNote = currentNote;
+        int t0 = millis();
+        while (millis()-t0 < 15) {
+          mpr121 = getButtonsState();
+        }
+        currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
+        MIDI.sendNoteOn(currentNote,velocity,channel);
+        Serial.println("note on while breathing");
+      }
+
+    }
+    if (breathRelease) {
+      cutoff = constrain(map(breath,threshold_bottom,threshold_top,cutoff_min,cutoff_max),cutoff_min,cutoff_max);
+      MIDI.sendControlChange(cutoff_cc,cutoff,channel);
+      MIDI.sendControlChange(vibrato_cc,vibrato,channel);
+      pixels.setPixelColor(4,pixels.Color(map(cutoff,cutoff_min,cutoff_max,0,255),0,0));
+      pixels.setPixelColor(5,pixels.Color(map(vibrato,vibrato_min,vibrato_max,0,255),0,map(vibrato,vibrato_min,vibrato_max,0,100)));
+      pixels.show();
+      modwheelVal = constrain(analogRead(modWheelPin),350,650);
+      modwheelVal = map(modwheelVal,650,350,MIDI_PITCHBEND_MIN,MIDI_PITCHBEND_MAX);
+      
+      //MIDI.sendPitchBend((int)modwheelVal,channel);
+      Serial.print("modwheel ");
+      Serial.print(modwheelVal);
+      Serial.print(" ,cutoff ");
+      Serial.print(cutoff);
+      Serial.print(" ,vibrato ");
+      Serial.print(vibrato);
+      Serial.print(" ,breath ");
+      Serial.print(breath);
+      Serial.print(" , buttons: ");
+      printBinary(mpr121);
+    }
+
+    
+
+  } else { 
+    if (breathRelease==true) { 
+      breathAttack=true; breathRelease=false; canSendNoteOnWhileBreathing=false;
+      MIDI.sendNoteOff(lastNote,velocity,channel);  
+      Serial.println("note off");
+      allNotesOFF();
+      pixels.setPixelColor(4,pixels.Color(0,0,0));
+      pixels.setPixelColor(5,pixels.Color(0,0,0));
+      pixels.show();
+      setBreathThreshold();
+    }
+
+  }
+
+  lastKey = currentKey;
+  
+}
+
+
+//MAIN
+void loop() {
+  updateDewi();
+  //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
+  sensors_event_t orientationData; //, angVelocityData , linearAccelData, magnetometerData, accelerometerData, gravityData
+  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+  handleEvent(&orientationData);
+  uint8_t system, gyro, accel, mag = 0;
+  bno.getCalibration(&system, &gyro, &accel, &mag);
+}
+
+
+
