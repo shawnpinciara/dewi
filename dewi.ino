@@ -21,15 +21,14 @@ int modwheel_cc = 74; //43
 int modwheel_min = 50;
 int modwheel_max =  127;
 
+////////////////////// SETTINGS
+
+#define USB_MIDI //toggle on or off midi usb
+
 //////////////////////
 
-#define MIDI_SERIAL
 
-#ifdef MIDI_SERIAL
-  MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI); //midi serial
-#else
-  MIDI_CREATE_DEFAULT_INSTANCE(); //midi usb
-#endif
+MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI); //midi serial
 const int channel = 1;
 
 // Which pin on the Arduino is connected to the NeoPixels?
@@ -200,6 +199,9 @@ void dump_regs() {
 void allNotesOFF() {
   for (int i=0;i<127;i++) {
     MIDI.sendNoteOff(i,velocity,channel); 
+    #ifdef USB_MIDI
+          usbMIDI.sendNoteOff(i,velocity,channel); 
+    #endif
   }
 }
 
@@ -491,6 +493,9 @@ void updateDewi() {
       currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
       if(velocity!=0) {
         MIDI.sendNoteOn(currentNote,velocity,channel);
+        #ifdef USB_MIDI
+          usbMIDI.sendNoteOn(currentNote,velocity,channel);
+        #endif
         Serial.print("note on with vel: ");
         Serial.println(velocity);
       }
@@ -504,6 +509,9 @@ void updateDewi() {
         }
         currentNote = ((octave+octaveArray[currentOctave])*12)+(noteArray[mpr121 & mask_note]+keyArray[currentKey]);
         MIDI.sendNoteOn(currentNote,velocity,channel);
+        #ifdef USB_MIDI
+          usbMIDI.sendNoteOn(currentNote,velocity,channel);
+        #endif
         Serial.println("note on while breathing");
       }
 
@@ -512,6 +520,10 @@ void updateDewi() {
       cutoff = constrain(map(breath,threshold_bottom,threshold_top,cutoff_min,cutoff_max),cutoff_min,cutoff_max);
       MIDI.sendControlChange(cutoff_cc,cutoff,channel);
       MIDI.sendControlChange(vibrato_cc,vibrato,channel);
+      #ifdef USB_MIDI
+        MIDI.sendControlChange(cutoff_cc,cutoff,channel);
+        MIDI.sendControlChange(vibrato_cc,vibrato,channel);
+      #endif
       pixels.setPixelColor(4,pixels.Color(map(cutoff,cutoff_min,cutoff_max,0,255),0,0));
       pixels.setPixelColor(5,pixels.Color(map(vibrato,vibrato_min,vibrato_max,0,255),0,map(vibrato,vibrato_min,vibrato_max,0,100)));
       pixels.show();
@@ -537,6 +549,9 @@ void updateDewi() {
     if (breathRelease==true) { 
       breathAttack=true; breathRelease=false; canSendNoteOnWhileBreathing=false;
       MIDI.sendNoteOff(lastNote,velocity,channel);  
+      #ifdef USB_MIDI
+          usbMIDI.sendNoteOff(lastNote,velocity,channel);  
+      #endif
       Serial.println("note off");
       allNotesOFF();
       pixels.setPixelColor(4,pixels.Color(0,0,0));
